@@ -25,16 +25,35 @@ import {
  * Format user data for response
  */
 function formatUserData(user) {
+  // Parse role_permissions if it's a string
+  let rolePermissions = null;
+  if (user.role_permissions) {
+    rolePermissions = typeof user.role_permissions === 'string'
+      ? JSON.parse(user.role_permissions)
+      : user.role_permissions;
+  }
+
   return {
     id: user.id,
     email: user.email,
     role: user.role,
+    role_id: user.role_id,
+    role_level: user.role_level,
+    role_name: user.role_name,
+    first_name: user.first_name,
+    last_name: user.last_name,
+
+    // Legacy boolean permissions (keep for backward compatibility)
     permissions: {
       workforce: !!user.perm_workforce,
       docks: !!user.perm_docks,
       projects: !!user.perm_projects,
       tickets: !!user.perm_tickets,
     },
+
+    // New role-based permissions
+    role_permissions: rolePermissions,
+
     idleTimeoutMinutes: user.idle_timeout_minutes || 60,
     lastActivityAt: user.last_activity_at,
   };

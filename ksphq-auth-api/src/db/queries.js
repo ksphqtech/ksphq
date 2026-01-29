@@ -43,11 +43,16 @@ export async function findUserByEmail(db, email) {
 export async function findUserById(db, userId) {
   const result = await db
     .prepare(
-      `SELECT id, email, role,
-              perm_workforce, perm_docks, perm_projects, perm_tickets,
-              is_active, idle_timeout_minutes, last_activity_at
-       FROM users
-       WHERE id = ?`
+      `SELECT u.id, u.email, u.role, u.role_id,
+              u.first_name, u.last_name,
+              u.perm_workforce, u.perm_docks, u.perm_projects, u.perm_tickets,
+              u.is_active, u.idle_timeout_minutes, u.last_activity_at,
+              r.level as role_level,
+              r.name as role_name,
+              r.permissions as role_permissions
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.id = ?`
     )
     .bind(userId)
     .first();
