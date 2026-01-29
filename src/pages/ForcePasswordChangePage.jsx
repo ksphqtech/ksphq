@@ -69,12 +69,16 @@ export function ForcePasswordChangePage() {
       toast.success('Password changed successfully!')
       navigate('/dashboard')
     } catch (error) {
-      if (error.status === 400 && error.message?.includes('current password')) {
+      console.error('Password change failed:', error)
+
+      if (error.status === 401) {
+        toast.error('Session expired or invalid. Please login again.')
+      } else if (error.status === 400 && error.message?.includes('current password')) {
         toast.error('Current password is incorrect')
       } else if (error.message?.includes('same as')) {
         toast.error('New password must be different from current password')
       } else {
-        toast.error(error.message || 'Failed to change password')
+        toast.error(`Failed to change password: ${error.message || 'Unknown error'}`)
       }
     } finally {
       setIsLoading(false)
