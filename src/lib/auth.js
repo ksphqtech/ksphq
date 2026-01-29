@@ -43,3 +43,51 @@ export const hasPermission = (user, tool) => {
   if (!user.permissions) return false
   return user.permissions[tool] === true
 }
+
+// =============================================================================
+// TEMPORARY STUBS - User Management Features
+// These functions are temporary stubs for the UsersPage and PermissionsPage
+// TODO: Implement proper API endpoints for user management in the backend
+// =============================================================================
+
+/**
+ * Get all users - TEMPORARY STUB
+ * Returns empty array - user management needs API implementation
+ */
+export const getUsers = () => {
+  console.warn('getUsers: User management API not yet implemented')
+  return []
+}
+
+/**
+ * Update user - TEMPORARY STUB
+ * Does nothing - user management needs API implementation
+ */
+export const updateUser = (userId, updates) => {
+  console.warn('updateUser: User management API not yet implemented')
+}
+
+/**
+ * Save user - TEMPORARY STUB
+ * Does nothing - user management needs API implementation
+ */
+export const saveUser = (user) => {
+  console.warn('saveUser: User management API not yet implemented')
+}
+
+/**
+ * Delete user - TEMPORARY STUB
+ * Does nothing - user management needs API implementation
+ */
+export const deleteUser = (userId) => {
+  console.warn('deleteUser: User management API not yet implemented')
+}
+
+/**
+ * Find user by email - TEMPORARY STUB
+ * Returns null - user management needs API implementation
+ */
+export const findUserByEmail = (email) => {
+  console.warn('findUserByEmail: User management API not yet implemented')
+  return null
+}
