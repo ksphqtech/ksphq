@@ -25,12 +25,17 @@ export async function createUser(db, { email, passwordHash, role = 'user' }) {
 export async function findUserByEmail(db, email) {
   const result = await db
     .prepare(
-      `SELECT id, email, password_hash, role,
-              perm_workforce, perm_docks, perm_projects, perm_tickets,
-              is_active, idle_timeout_minutes, last_activity_at,
-              password_reset_required
-       FROM users
-       WHERE email = ? COLLATE NOCASE`
+      `SELECT u.id, u.email, u.password_hash, u.role, u.role_id,
+              u.first_name, u.last_name,
+              u.perm_workforce, u.perm_docks, u.perm_projects, u.perm_tickets,
+              u.is_active, u.idle_timeout_minutes, u.last_activity_at,
+              u.password_reset_required, u.deleted_at,
+              r.level as role_level,
+              r.name as role_name,
+              r.permissions as role_permissions
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.email = ? COLLATE NOCASE`
     )
     .bind(email)
     .first();
