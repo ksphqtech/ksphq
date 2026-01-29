@@ -89,6 +89,7 @@ export function LoginForm() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
                 disabled={isLoading || rateLimitInfo}
               />
@@ -103,6 +104,7 @@ export function LoginForm() {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
                 disabled={isLoading || rateLimitInfo}
               />

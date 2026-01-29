@@ -69,7 +69,12 @@ export function AuthProvider({ children }) {
       clearTimeout(idleTimer)
 
       // Track activity with API (debounced)
-      authService.trackActivity().catch(console.error)
+      // Silently fail on 401 errors (handled by global auth:unauthorized event)
+      authService.trackActivity().catch((error) => {
+        if (error.status !== 401) {
+          console.error('Activity tracking failed:', error)
+        }
+      })
 
       idleTimer = setTimeout(
         () => {

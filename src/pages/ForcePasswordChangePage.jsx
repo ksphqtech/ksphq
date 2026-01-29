@@ -124,6 +124,7 @@ export function ForcePasswordChangePage() {
                   value={formData.currentPassword}
                   onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
                   placeholder="Enter current password"
+                  autoComplete="current-password"
                   disabled={isLoading}
                   required
                   className="pr-10"
@@ -149,6 +150,7 @@ export function ForcePasswordChangePage() {
                   value={formData.newPassword}
                   onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                   placeholder="Enter new password"
+                  autoComplete="new-password"
                   disabled={isLoading}
                   required
                   className="pr-10"
@@ -203,6 +205,7 @@ export function ForcePasswordChangePage() {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="Confirm new password"
+                  autoComplete="new-password"
                   disabled={isLoading}
                   required
                   className="pr-10"

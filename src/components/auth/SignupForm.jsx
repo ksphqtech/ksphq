@@ -62,6 +62,7 @@ export function SignupForm() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
                 disabled={isLoading}
               />
@@ -76,6 +77,7 @@ export function SignupForm() {
                 placeholder="Min. 8 chars, 1 uppercase, 1 lowercase, 1 number"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 disabled={isLoading}
               />
@@ -90,6 +92,7 @@ export function SignupForm() {
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 disabled={isLoading}
               />
