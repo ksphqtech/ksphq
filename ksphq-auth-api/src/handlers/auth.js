@@ -5,6 +5,8 @@ import { validateData, signupSchema, loginSchema } from '../utils/validation.js'
 import { AppError } from '../middleware/errorHandler.js';
 import { getClientMetadata, verifyRefreshToken } from '../middleware/auth.js';
 import { rateLimitLogin, rateLimitSignup } from '../middleware/rateLimit.js';
+import { checkAccountLockout, recordFailedLogin, resetFailedLoginCount } from '../utils/accountLockout.js';
+import bcrypt from 'bcryptjs';
 import {
   createUser,
   findUserByEmail,
@@ -195,19 +197,75 @@ export async function login(request, env) {
     throw new AppError('Invalid email or password', 401);
   }
 
+  // Check account lockout status
+  try {
+    await checkAccountLockout(user);
+  } catch (lockoutError) {
+    // Record this failed login attempt due to lockout
+    await env.DB.prepare(
+      `INSERT INTO failed_login_attempts (email, ip_address, device_fingerprint, reason)
+       VALUES (?, ?, ?, 'account_locked')`
+    ).bind(email, ipAddress, deviceFingerprint).run();
+    throw lockoutError;
+  }
+
   // Check if account is active
   if (!user.is_active) {
     throw new AppError('Account is disabled', 403);
   }
 
+  // Check if account is deleted
+  if (user.deleted_at) {
+    throw new AppError('Account has been deactivated. Contact your administrator.', 403);
+  }
+
   // Verify password
   const passwordValid = await comparePassword(password, user.password_hash);
   if (!passwordValid) {
-    throw new AppError('Invalid email or password', 401);
+    // Record failed login attempt and increment counter
+    await recordFailedLogin(env.DB, user, ipAddress, deviceFingerprint, 'invalid_password');
+    // recordFailedLogin throws an AppError, so this line won't be reached
   }
+
+  // Reset failed login count on successful password verification
+  await resetFailedLoginCount(env.DB, user.id);
 
   // Generate tokens
   const { accessToken, refreshToken, userData } = await generateTokens(user, env, request);
+
+  // Create session record in user_sessions table
+  const sessionTokenHash = await bcrypt.hash(refreshToken, 10);
+  const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Detect device name from user agent
+  let deviceName = 'Unknown Device';
+  if (userAgent) {
+    if (userAgent.includes('Chrome')) deviceName = 'Chrome';
+    else if (userAgent.includes('Firefox')) deviceName = 'Firefox';
+    else if (userAgent.includes('Safari')) deviceName = 'Safari';
+    else if (userAgent.includes('Edge')) deviceName = 'Edge';
+
+    if (userAgent.includes('Windows')) deviceName += ' on Windows';
+    else if (userAgent.includes('Mac')) deviceName += ' on macOS';
+    else if (userAgent.includes('Linux')) deviceName += ' on Linux';
+    else if (userAgent.includes('Android')) deviceName += ' on Android';
+    else if (userAgent.includes('iOS')) deviceName += ' on iOS';
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO user_sessions (
+      user_id, session_token_hash, device_fingerprint, device_name,
+      ip_address, user_agent, expires_at, last_activity_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  ).bind(
+    user.id,
+    sessionTokenHash,
+    deviceFingerprint,
+    deviceName,
+    ipAddress,
+    userAgent,
+    sessionExpiresAt
+  ).run();
 
   // Update last login
   await updateLastLogin(env.DB, user.id);

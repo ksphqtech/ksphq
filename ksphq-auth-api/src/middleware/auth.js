@@ -33,8 +33,43 @@ export async function requireAuth(request, env) {
       }
     }
 
-    return payload;
+    // Fetch user with role data for permission checks
+    const userWithRole = await env.DB.prepare(`
+      SELECT
+        u.id,
+        u.email,
+        u.role,
+        u.role_id,
+        u.branch_id,
+        u.department_id,
+        u.team_id,
+        u.is_active,
+        u.deleted_at,
+        r.level as role_level,
+        r.permissions as role_permissions
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.id = ?
+    `).bind(payload.sub).first();
+
+    if (!userWithRole) {
+      throw new AppError('User not found', 401);
+    }
+
+    // Parse permissions if JSON string
+    if (userWithRole.role_permissions && typeof userWithRole.role_permissions === 'string') {
+      try {
+        userWithRole.role_permissions = JSON.parse(userWithRole.role_permissions);
+      } catch (e) {
+        userWithRole.role_permissions = {};
+      }
+    }
+
+    return userWithRole;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError('Invalid or expired token', 401);
   }
 }

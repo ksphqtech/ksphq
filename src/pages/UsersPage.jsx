@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+/**
+ * Users Page - Enterprise User Management
+ * Complete user management interface with all CRUD operations
+ */
+
+import { useState } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
@@ -12,152 +16,112 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Search, Trash2, Edit, Users as UsersIcon } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { getUsers, updateUser } from '@/lib/auth'
-import { EditUserDialog } from '@/components/users/EditUserDialog'
-import { DeleteUserDialog } from '@/components/users/DeleteUserDialog'
-import { toast } from 'sonner'
-import { DEFAULT_PERMISSIONS } from '@/lib/auth'
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, MoreVertical, Edit, Trash2, KeyRound, UserX, Info } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUsers } from '@/hooks/useUsers';
+import { UserStatsCards } from '@/components/users/UserStatsCards';
+import { UserTableFilters } from '@/components/users/UserTableFilters';
+import { CreateUserDialog } from '@/components/users/CreateUserDialog';
+import { EditUserDialog } from '@/components/users/EditUserDialog';
+import { DeactivateUserDialog } from '@/components/users/DeactivateUserDialog';
+import { PasswordResetDialog } from '@/components/users/PasswordResetDialog';
+import { DeletedUsersPanel } from '@/components/users/DeletedUsersPanel';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function UsersPage() {
-  const { user: currentUser } = useAuth()
-  const [users, setUsers] = useState([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [editingUser, setEditingUser] = useState(null)
-  const [deletingUser, setDeletingUser] = useState(null)
+  const { user: currentUser } = useAuth();
+  const [filters, setFilters] = useState({});
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [deactivatingUser, setDeactivatingUser] = useState(null);
+  const [resettingPasswordUser, setResettingPasswordUser] = useState(null);
+  const [showDeletedPanel, setShowDeletedPanel] = useState(false);
 
-  const isAdmin = currentUser?.role === 'admin'
-  const canEdit = isAdmin
+  const { data, isLoading, error } = useUsers(filters);
+  const users = data?.users || [];
+  const pagination = data?.pagination || {};
 
-  useEffect(() => {
-    loadUsers()
-  }, [])
+  // Check user permissions
+  const userPermissions = currentUser?.role_permissions || currentUser?.permissions || {};
+  const canManageUsers = ['full', 'branch', 'department', 'team'].includes(
+    userPermissions.user_management
+  );
+  const canViewOnly = userPermissions.user_management === 'view_team' ||
+                       userPermissions.user_management === 'view_self';
 
-  const loadUsers = () => {
-    const allUsers = getUsers()
-    setUsers(allUsers)
-  }
-
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const handleEditRole = (userId, updates) => {
-    // Update role and default permissions for that role
-    const updatedData = {
-      ...updates,
-      permissions: DEFAULT_PERMISSIONS[updates.role]
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
-    updateUser(userId, updatedData)
-    loadUsers()
-    setEditingUser(null)
-    toast.success('User role updated successfully!')
-  }
+    return email?.substring(0, 2).toUpperCase() || 'U';
+  };
 
-  const handleDeleteUser = (userId) => {
-    if (userId === currentUser.id) {
-      toast.error('You cannot delete your own account!')
-      return
-    }
-
-    const allUsers = getUsers()
-    const filtered = allUsers.filter(u => u.id !== userId)
-    localStorage.setItem('users', JSON.stringify(filtered))
-    loadUsers()
-    setDeletingUser(null)
-    toast.success('User deleted successfully!')
-  }
-
-  const getInitials = (email) => {
-    return email.substring(0, 2).toUpperCase()
-  }
-
-  const getRoleBadgeVariant = (role) => {
-    switch (role) {
-      case 'admin':
-        return 'default'
-      case 'manager':
-        return 'secondary'
-      default:
-        return 'outline'
-    }
-  }
+  const getRoleBadgeVariant = (roleLevel) => {
+    if (roleLevel >= 80) return 'default';
+    if (roleLevel >= 40) return 'secondary';
+    return 'outline';
+  };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
-    })
-  }
+      day: 'numeric',
+    });
+  };
+
+  const handlePageChange = (newPage) => {
+    setFilters({ ...filters, page: newPage });
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Users</h1>
+            <h1 className="text-3xl font-bold">User Management</h1>
             <p className="text-muted-foreground">
-              Manage user accounts and roles
+              Manage user accounts, roles, and permissions
             </p>
           </div>
-          {!canEdit && (
-            <Badge variant="outline">View Only</Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {canViewOnly && (
+              <Badge variant="outline" className="gap-1">
+                <Info className="h-3 w-3" />
+                View Only
+              </Badge>
+            )}
+            {canManageUsers && (
+              <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create User
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <UsersIcon className="h-4 w-4" />
-                Total Users
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{users.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Admins
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {users.filter(u => u.role === 'admin').length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Managers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {users.filter(u => u.role === 'manager').length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Users
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {users.filter(u => u.role === 'user').length}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <UserStatsCards onDeletedClick={() => setShowDeletedPanel(true)} />
+
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UserTableFilters filters={filters} onFiltersChange={setFilters} />
+          </CardContent>
+        </Card>
 
         {/* Users Table */}
         <Card>
@@ -165,107 +129,202 @@ export function UsersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>All Users</CardTitle>
-                <CardDescription>A list of all registered users</CardDescription>
-              </div>
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
+                <CardDescription>
+                  {isLoading
+                    ? 'Loading...'
+                    : `Showing ${users.length} of ${pagination.total || 0} users`}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
-                  {canEdit && <TableHead className="text-right">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.length === 0 ? (
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>
+                  Failed to load users: {error.message}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 5 : 4} className="text-center text-muted-foreground">
-                      No users found
-                    </TableCell>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    {canManageUsers && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs">
-                              {getInitials(user.email)}
-                            </AvatarFallback>
-                          </Avatar>
-                          {user.id === currentUser.id && (
-                            <Badge variant="outline" className="text-xs">You</Badge>
-                          )}
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={canManageUsers ? 6 : 5} className="text-center py-8">
+                        <div className="text-muted-foreground">Loading users...</div>
+                      </TableCell>
+                    </TableRow>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={canManageUsers ? 6 : 5} className="text-center py-8">
+                        <div className="text-muted-foreground">
+                          {Object.keys(filters).length > 0
+                            ? 'No users match your filters'
+                            : 'No users found'}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                          {user.role.toUpperCase()}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatDate(user.createdAt)}</TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingUser(user)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setDeletingUser(user)}
-                              disabled={user.id === currentUser.id}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    </TableRow>
+                  ) : (
+                    users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="text-xs">
+                                {getInitials(user.first_name, user.last_name, user.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">
+                                  {user.first_name && user.last_name
+                                    ? `${user.first_name} ${user.last_name}`
+                                    : user.email}
+                                </p>
+                                {user.id === currentUser?.id && (
+                                  <Badge variant="outline" className="text-xs">You</Badge>
+                                )}
+                              </div>
+                              {user.first_name && user.last_name && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {user.email}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                        <TableCell>
+                          <Badge variant={getRoleBadgeVariant(user.role_level)}>
+                            {user.role_name || 'Unknown'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">
+                            {user.department_name || 'None'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {user.is_active ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                              Inactive
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDate(user.last_login_at)}
+                          </span>
+                        </TableCell>
+                        {canManageUsers && (
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit User
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setResettingPasswordUser(user)}>
+                                  <KeyRound className="mr-2 h-4 w-4" />
+                                  Reset Password
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setDeactivatingUser(user)}
+                                  disabled={user.id === currentUser?.id}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Deactivate User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Page {pagination.page} of {pagination.totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page === pagination.totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Edit Dialog */}
+      {/* Dialogs */}
+      <CreateUserDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
+
       {editingUser && (
         <EditUserDialog
           user={editingUser}
-          onSave={handleEditRole}
-          onCancel={() => setEditingUser(null)}
+          open={!!editingUser}
+          onOpenChange={(open) => !open && setEditingUser(null)}
         />
       )}
 
-      {/* Delete Dialog */}
-      {deletingUser && (
-        <DeleteUserDialog
-          user={deletingUser}
-          onConfirm={() => handleDeleteUser(deletingUser.id)}
-          onCancel={() => setDeletingUser(null)}
+      {deactivatingUser && (
+        <DeactivateUserDialog
+          user={deactivatingUser}
+          open={!!deactivatingUser}
+          onOpenChange={(open) => !open && setDeactivatingUser(null)}
         />
       )}
+
+      {resettingPasswordUser && (
+        <PasswordResetDialog
+          user={resettingPasswordUser}
+          open={!!resettingPasswordUser}
+          onOpenChange={(open) => !open && setResettingPasswordUser(null)}
+        />
+      )}
+
+      <DeletedUsersPanel open={showDeletedPanel} onOpenChange={setShowDeletedPanel} />
     </DashboardLayout>
-  )
+  );
 }
