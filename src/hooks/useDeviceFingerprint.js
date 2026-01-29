@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
-import ClientJS from 'clientjs'
+import { getDeviceFingerprint } from '@/utils/fingerprint'
 
 /**
- * Generate stable device fingerprint for rate limiting
+ * React hook for device fingerprinting
  * Uses low-entropy signals (privacy-friendly)
  *
  * What it collects:
  * - User-Agent string
  * - Screen resolution
  * - Color depth
- * - Timezone
+ * - Timezone offset
  * - Language
- * - Available screen size
+ * - Platform
  *
  * What it DOESN'T collect (privacy-invasive):
  * - Canvas fingerprint
@@ -24,17 +24,10 @@ export function useDeviceFingerprint() {
   const [fingerprint, setFingerprint] = useState(null)
 
   useEffect(() => {
-    try {
-      // ClientJS needs to be instantiated differently - check if it's a constructor or a class
-      const ClientJSConstructor = ClientJS.default || ClientJS
-      const client = new ClientJSConstructor()
-      const fp = client.getFingerprint()
-      setFingerprint(fp.toString())
-    } catch (error) {
+    getDeviceFingerprint().then(setFingerprint).catch((error) => {
       console.error('Failed to generate fingerprint:', error)
-      // Fallback to random session ID
       setFingerprint(`session-${Date.now()}-${Math.random()}`)
-    }
+    })
   }, [])
 
   return fingerprint
