@@ -639,6 +639,6 @@ Environment variables: (none for frontend-only)
 
 ---
 
-**Last Updated**: 2024-01-28
+**Last Updated**: 2026-01-29
 **Version**: 0.1.0
 **Status**: Development
