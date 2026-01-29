@@ -1,5 +1,5 @@
 import { hashPassword, comparePassword } from '../utils/password.js';
-import { createAccessToken, createRefreshToken, verifyToken, extractTokenFromCookie } from '../utils/jwt.js';
+import { createAccessToken, createRefreshToken, verifyToken, extractTokenFromCookie, extractAccessToken } from '../utils/jwt.js';
 import { successResponse, errorResponse, setCookie, clearCookie } from '../utils/response.js';
 import { validateData, signupSchema, loginSchema } from '../utils/validation.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -129,13 +129,20 @@ export async function signup(request, env) {
     userAgent,
   });
 
-  // Set cookies and return response
-  let response = successResponse({ user: userData }, 201);
+  // Return tokens in response body for header-based auth
+  let response = successResponse({
+    user: userData,
+    accessToken,      // NEW: Include in response
+    refreshToken,     // NEW: Include in response
+    expiresIn: 900    // NEW: 15 minutes in seconds
+  }, 201);
+
+  // BACKWARD COMPATIBILITY: Also set cookies
   response = setCookie(response, 'access_token', accessToken, {
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 15 * 60,
   });
   response = setCookie(response, 'refresh_token', refreshToken, {
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
     path: '/auth/refresh',
   });
 
@@ -260,13 +267,20 @@ export async function login(request, env) {
     userAgent,
   });
 
-  // Set cookies and return response
-  let response = successResponse({ user: userData });
+  // Return tokens in response body for header-based auth
+  let response = successResponse({
+    user: userData,
+    accessToken,
+    refreshToken,
+    expiresIn: 900
+  });
+
+  // BACKWARD COMPATIBILITY: Also set cookies
   response = setCookie(response, 'access_token', accessToken, {
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 15 * 60,
   });
   response = setCookie(response, 'refresh_token', refreshToken, {
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
     path: '/auth/refresh',
   });
 
@@ -280,9 +294,8 @@ export async function login(request, env) {
 export async function logout(request, env, user) {
   const { ipAddress, userAgent } = getClientMetadata(request);
 
-  // Revoke current access token if present
-  const cookieHeader = request.headers.get('Cookie');
-  const accessToken = extractTokenFromCookie(cookieHeader, 'access_token');
+  // Revoke current access token (from header or cookie)
+  const accessToken = extractAccessToken(request);
 
   if (accessToken) {
     try {
@@ -307,7 +320,7 @@ export async function logout(request, env, user) {
     userAgent,
   });
 
-  // Clear cookies
+  // Clear cookies for backward compatibility
   let response = successResponse({ message: 'Logged out successfully' });
   response = clearCookie(response, 'access_token');
   response = clearCookie(response, 'refresh_token', '/auth/refresh');
@@ -320,20 +333,10 @@ export async function logout(request, env, user) {
  * Refresh access token using refresh token
  */
 export async function refresh(request, env) {
-  // Verify refresh token
-  const payload = await verifyRefreshToken(request, env);
+  // Verify refresh token (supports body + cookie)
+  const { payload, token: refreshTokenValue } = await verifyRefreshToken(request, env);
 
-  // Find token in database
   const { ipAddress, userAgent } = getClientMetadata(request);
-  const cookieHeader = request.headers.get('Cookie');
-  const refreshTokenValue = cookieHeader
-    ?.split(';')
-    .find(c => c.trim().startsWith('refresh_token='))
-    ?.split('=')[1];
-
-  if (!refreshTokenValue) {
-    throw new AppError('Refresh token required', 401);
-  }
 
   // Check if token exists and is valid
   const tokens = await env.DB.prepare(
@@ -360,24 +363,31 @@ export async function refresh(request, env) {
     throw new AppError('User not found or inactive', 401);
   }
 
-  // Generate new access token only
-  const userData = formatUserData(user);
-  const accessToken = await createAccessToken(
-    {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      permissions: userData.permissions,
-      idleTimeoutMinutes: userData.idleTimeoutMinutes,
-    },
-    env.JWT_SECRET,
-    '15m'
-  );
+  // SECURITY IMPROVEMENT: Revoke old refresh token (rotation)
+  await env.DB.prepare(
+    `UPDATE refresh_tokens
+     SET revoked_at = datetime('now')
+     WHERE user_id = ? AND revoked_at IS NULL`
+  ).bind(payload.sub).run();
 
-  // Set new access token cookie
-  let response = successResponse({ user: userData });
+  // Generate NEW tokens (both access and refresh)
+  const { accessToken, refreshToken, userData } = await generateTokens(user, env, request);
+
+  // Return new tokens in response body
+  let response = successResponse({
+    user: userData,
+    accessToken,      // NEW access token
+    refreshToken,     // NEW refresh token (rotation)
+    expiresIn: 900
+  });
+
+  // BACKWARD COMPATIBILITY: Also set cookies
   response = setCookie(response, 'access_token', accessToken, {
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 15 * 60,
+  });
+  response = setCookie(response, 'refresh_token', refreshToken, {
+    maxAge: 7 * 24 * 60 * 60,
+    path: '/auth/refresh',
   });
 
   return response;

@@ -1,4 +1,4 @@
-import { verifyToken, extractTokenFromCookie } from '../utils/jwt.js';
+import { verifyToken, extractTokenFromCookie, extractAccessToken } from '../utils/jwt.js';
 import { isAccessTokenRevoked } from '../db/queries.js';
 import { AppError } from './errorHandler.js';
 
@@ -15,15 +15,15 @@ import { AppError } from './errorHandler.js';
  * @throws {AppError} If authentication fails
  */
 export async function requireAuth(request, env) {
-  const cookieHeader = request.headers.get('Cookie');
-  const accessToken = extractTokenFromCookie(cookieHeader, 'access_token');
+  const accessToken = extractAccessToken(request);
 
   // Debug logging
-  console.log('[Auth] Cookie header present:', !!cookieHeader);
-  console.log('[Auth] Access token extracted:', !!accessToken);
+  console.log('[Auth] Authorization header:', !!request.headers.get('Authorization'));
+  console.log('[Auth] Cookie header:', !!request.headers.get('Cookie'));
+  console.log('[Auth] Token extracted:', !!accessToken);
 
   if (!accessToken) {
-    console.error('[Auth] No access token found in cookies');
+    console.error('[Auth] No access token in header or cookie');
     throw new AppError('Authentication required', 401);
   }
 
@@ -96,8 +96,23 @@ export async function requireAuth(request, env) {
  * @throws {AppError} If token is invalid
  */
 export async function verifyRefreshToken(request, env) {
-  const cookieHeader = request.headers.get('Cookie');
-  const refreshToken = extractTokenFromCookie(cookieHeader, 'refresh_token');
+  let refreshToken = null;
+
+  // Priority 1: Request body (new method)
+  try {
+    const body = await request.clone().json();
+    if (body.refreshToken) {
+      refreshToken = body.refreshToken;
+    }
+  } catch (e) {
+    // Not JSON or no refreshToken in body
+  }
+
+  // Priority 2: Cookie (backward compatibility)
+  if (!refreshToken) {
+    const cookieHeader = request.headers.get('Cookie');
+    refreshToken = extractTokenFromCookie(cookieHeader, 'refresh_token');
+  }
 
   if (!refreshToken) {
     throw new AppError('Refresh token required', 401);
@@ -110,7 +125,7 @@ export async function verifyRefreshToken(request, env) {
       throw new AppError('Invalid token type', 401);
     }
 
-    return payload;
+    return { payload, token: refreshToken };
   } catch (error) {
     throw new AppError('Invalid or expired refresh token', 401);
   }

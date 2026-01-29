@@ -83,3 +83,38 @@ export function extractTokenFromCookie(cookieHeader, name) {
 
   return cookie.substring(name.length + 1);
 }
+
+/**
+ * Extract token from Authorization header (Bearer format)
+ * @param {string} authHeader - Authorization header string
+ * @returns {string|null} Token value or null
+ */
+export function extractTokenFromAuthHeader(authHeader) {
+  if (!authHeader) return null;
+
+  const bearerPrefix = 'Bearer ';
+  if (!authHeader.startsWith(bearerPrefix)) {
+    return null;
+  }
+
+  return authHeader.substring(bearerPrefix.length).trim() || null;
+}
+
+/**
+ * Extract access token from request (header first, cookie fallback)
+ * Supports dual-mode authentication during migration
+ * @param {Request} request - Request object
+ * @returns {string|null} Token value or null
+ */
+export function extractAccessToken(request) {
+  // Priority 1: Authorization header (new method)
+  const authHeader = request.headers.get('Authorization');
+  const headerToken = extractTokenFromAuthHeader(authHeader);
+  if (headerToken) {
+    return headerToken;
+  }
+
+  // Priority 2: Cookie (backward compatibility)
+  const cookieHeader = request.headers.get('Cookie');
+  return extractTokenFromCookie(cookieHeader, 'access_token');
+}
