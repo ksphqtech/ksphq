@@ -2,6 +2,14 @@
 
 Complete setup guide for the KSP HQ Business Tools Platform.
 
+## Repository
+
+Clone from GitHub:
+```bash
+git clone https://github.com/ksphqtech/ksphq.git
+cd ksphq
+```
+
 ## Quick Start (5 minutes)
 
 ```bash
@@ -193,14 +201,14 @@ npm run build
 npx wrangler pages deploy dist
 ```
 
-### Option 2: Git Integration
+### Option 2: Git Integration (Recommended)
 
-1. Push code to GitHub/GitLab
+1. Code is hosted at: https://github.com/ksphqtech/ksphq
 2. Connect repository to Cloudflare Pages
 3. Configure build settings:
    - Build command: `npm run build`
    - Build output: `dist`
-   - Node version: 18
+   - Node version: 18+
 
 ## Development Tips
 

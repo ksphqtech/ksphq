@@ -2,6 +2,16 @@
 
 A modern, full-featured business tools platform built with React 18, Vite, Tailwind CSS, and shadcn/ui. This is a frontend-only development version with mock authentication and localStorage-based data persistence.
 
+## Repository
+
+**GitHub**: https://github.com/ksphqtech/ksphq
+
+Clone the repository:
+```bash
+git clone https://github.com/ksphqtech/ksphq.git
+cd ksphq
+```
+
 ## Features
 
 - **Authentication System**: Mock login/signup with localStorage persistence
@@ -103,23 +113,16 @@ The production-ready files will be in the `dist/` directory.
 
 ## Deployment to Cloudflare Pages
 
-1. Build the project:
-```bash
-npm run build
-```
-
-2. Deploy to Cloudflare Pages:
-```bash
-npx wrangler pages deploy dist
-```
-
-Or connect your Git repository to Cloudflare Pages for automatic deployments.
+This project is deployed via Git integration with Cloudflare Pages from the repository at https://github.com/ksphqtech/ksphq.
 
 ### Build Configuration for Cloudflare Pages
 
-- Build command: `npm run build`
-- Build output directory: `dist`
-- Node version: 18+
+- **Repository**: https://github.com/ksphqtech/ksphq
+- **Build command**: `npm run build`
+- **Build output directory**: `dist`
+- **Node version**: 18+
+
+Cloudflare Pages will automatically deploy on every push to the main branch.
 
 ## Future Backend Integration
 
