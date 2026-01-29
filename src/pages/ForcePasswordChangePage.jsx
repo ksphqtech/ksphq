@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Check, X, Eye, EyeOff, AlertCircle } from 'lucide-react'
-import authService from '@/services/authService'
+import { authService } from '@/services/authService'
 
 export function ForcePasswordChangePage() {
   const [formData, setFormData] = useState({
