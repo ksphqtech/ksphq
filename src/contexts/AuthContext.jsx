@@ -41,6 +41,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!user) return
 
+    // Don't auto-refresh for users who need to change their password
+    // They should complete the password change flow within 15 minutes
+    if (user.password_reset_required) {
+      return
+    }
+
     const interval = setInterval(
       async () => {
         try {
@@ -61,6 +67,12 @@ export function AuthProvider({ children }) {
   // Idle timeout tracking
   useEffect(() => {
     if (!user) return
+
+    // Don't start idle timer for users who need to change their password
+    // They need to complete the password change flow first
+    if (user.password_reset_required) {
+      return
+    }
 
     const timeoutMinutes = user.idleTimeoutMinutes || 60
     let idleTimer
