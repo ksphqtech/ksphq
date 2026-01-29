@@ -49,6 +49,7 @@ function formatUserData(user) {
     role_name: user.role_name,
     first_name: user.first_name,
     last_name: user.last_name,
+    password_reset_required: !!user.password_reset_required,
 
     // Legacy boolean permissions (keep for backward compatibility)
     permissions: {

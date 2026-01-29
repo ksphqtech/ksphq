@@ -182,5 +182,9 @@ export async function changePassword(request, env, authUser) {
     userAgent,
   });
 
-  return successResponse({ message: 'Password updated successfully' });
+  // Fetch updated user data to return (with password_reset_required cleared)
+  const updatedUser = await findUserById(env.DB, authUser.sub);
+  const userData = formatUserData(updatedUser);
+
+  return successResponse({ message: 'Password updated successfully', user: userData });
 }

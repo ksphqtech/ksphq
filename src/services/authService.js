@@ -71,10 +71,11 @@ export const authService = {
    * Change user password
    * @param {string} currentPassword - Current password
    * @param {string} newPassword - New password
-   * @returns {Promise<void>}
+   * @returns {Promise<Object>} Response with updated user data
    */
   async changePassword(currentPassword, newPassword) {
-    await patch('/auth/user/password', { currentPassword, newPassword });
+    const data = await patch('/auth/user/password', { currentPassword, newPassword });
+    return data.data;
   },
 
   /**

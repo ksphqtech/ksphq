@@ -31,8 +31,14 @@ export function LoginForm() {
       const result = await login(email, password)
 
       if (result.success) {
-        toast.success('Welcome back!')
-        navigate('/dashboard')
+        // Check if password change is required
+        if (result.requiresPasswordChange) {
+          toast.info('Password change required')
+          navigate('/force-password-change')
+        } else {
+          toast.success('Welcome back!')
+          navigate('/dashboard')
+        }
       } else {
         // Check if error is rate limiting (429)
         if (result.statusCode === 429 && result.retryAfter) {

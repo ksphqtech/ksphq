@@ -112,6 +112,12 @@ export function AuthProvider({ children }) {
     try {
       const userData = await authService.login(email, password)
       setUser(userData)
+
+      // Check if password change is required
+      if (userData.password_reset_required) {
+        return { success: true, requiresPasswordChange: true }
+      }
+
       return { success: true }
     } catch (error) {
       return {
@@ -148,6 +154,10 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  const updateUser = (userData) => {
+    setUser(userData)
+  }
+
   const checkPermission = (tool) => {
     if (!user) return false
     if (user.role === 'admin') return true
@@ -172,6 +182,7 @@ export function AuthProvider({ children }) {
         login,
         logout,
         signup,
+        updateUser,
         hasPermission: checkPermission,
       }}
     >

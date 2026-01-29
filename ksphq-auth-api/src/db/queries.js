@@ -27,7 +27,8 @@ export async function findUserByEmail(db, email) {
     .prepare(
       `SELECT id, email, password_hash, role,
               perm_workforce, perm_docks, perm_projects, perm_tickets,
-              is_active, idle_timeout_minutes, last_activity_at
+              is_active, idle_timeout_minutes, last_activity_at,
+              password_reset_required
        FROM users
        WHERE email = ? COLLATE NOCASE`
     )
@@ -47,6 +48,7 @@ export async function findUserById(db, userId) {
               u.first_name, u.last_name,
               u.perm_workforce, u.perm_docks, u.perm_projects, u.perm_tickets,
               u.is_active, u.idle_timeout_minutes, u.last_activity_at,
+              u.password_reset_required,
               r.level as role_level,
               r.name as role_name,
               r.permissions as role_permissions
@@ -135,6 +137,7 @@ export async function updatePassword(db, userId, newPasswordHash) {
     .prepare(
       `UPDATE users
        SET password_hash = ?,
+           password_reset_required = 0,
            updated_at = datetime('now')
        WHERE id = ?`
     )

@@ -223,6 +223,7 @@ export async function createUser(db, userData, createdBy) {
     password = null,
     idle_timeout_minutes = 60,
     account_expires_at = null,
+    require_password_change = false,
   } = userData;
 
   // Check email uniqueness
@@ -298,7 +299,7 @@ export async function createUser(db, userData, createdBy) {
       password_expires_at,
       account_expires_at || null,
       createdBy,
-      password_option === 'auto' || password_option === 'email' ? 1 : 0
+      password_option === 'auto' || password_option === 'email' || require_password_change ? 1 : 0
     )
     .first();
 

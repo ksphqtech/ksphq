@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { CustomizeProvider } from '@/contexts/CustomizeContext'
@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
+import { ForcePasswordChangePage } from '@/pages/ForcePasswordChangePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { BusinessInfoPage } from '@/pages/BusinessInfoPage'
 import { UsersPage } from '@/pages/UsersPage'
@@ -18,7 +19,8 @@ import { ProjectControl } from '@/pages/tools/ProjectControl'
 import { HQTickets } from '@/pages/tools/HQTickets'
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
+  const location = useLocation()
 
   if (isLoading) {
     return (
@@ -28,7 +30,21 @@ function ProtectedRoute({ children }) {
     )
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Force password change if required
+  if (user?.password_reset_required && location.pathname !== '/force-password-change') {
+    return <Navigate to="/force-password-change" replace />
+  }
+
+  // Don't allow access to password change page if not required
+  if (location.pathname === '/force-password-change' && !user?.password_reset_required) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return children
 }
 
 function PublicRoute({ children }) {
@@ -54,6 +70,14 @@ function AppRoutes() {
           <PublicRoute>
             <SignupPage />
           </PublicRoute>
+        }
+      />
+      <Route
+        path="/force-password-change"
+        element={
+          <ProtectedRoute>
+            <ForcePasswordChangePage />
+          </ProtectedRoute>
         }
       />
       <Route

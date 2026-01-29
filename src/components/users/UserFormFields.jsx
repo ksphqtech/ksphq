@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -356,6 +357,25 @@ export function AccountSettingsFields({
               </Alert>
             </div>
           )}
+
+          <div className="flex items-start space-x-2 p-3 border rounded-lg">
+            <Checkbox
+              id="require_password_change"
+              checked={formData.require_password_change !== false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, require_password_change: checked })
+              }
+              disabled={disabled}
+            />
+            <div className="flex-1">
+              <Label htmlFor="require_password_change" className="font-normal cursor-pointer">
+                Require password change on first login
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                User will be prompted to set a new password when they log in
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
