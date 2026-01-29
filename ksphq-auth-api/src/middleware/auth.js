@@ -18,17 +18,24 @@ export async function requireAuth(request, env) {
   const cookieHeader = request.headers.get('Cookie');
   const accessToken = extractTokenFromCookie(cookieHeader, 'access_token');
 
+  // Debug logging
+  console.log('[Auth] Cookie header present:', !!cookieHeader);
+  console.log('[Auth] Access token extracted:', !!accessToken);
+
   if (!accessToken) {
+    console.error('[Auth] No access token found in cookies');
     throw new AppError('Authentication required', 401);
   }
 
   try {
     const payload = await verifyToken(accessToken, env.JWT_SECRET);
+    console.log('[Auth] Token verified for user:', payload.sub);
 
     // Check if token is revoked
     if (payload.jti) {
       const isRevoked = await isAccessTokenRevoked(env.DB, payload.jti);
       if (isRevoked) {
+        console.error('[Auth] Token is revoked:', payload.jti);
         throw new AppError('Token has been revoked', 401);
       }
     }
@@ -53,8 +60,11 @@ export async function requireAuth(request, env) {
     `).bind(payload.sub).first();
 
     if (!userWithRole) {
+      console.error('[Auth] User not found in database:', payload.sub);
       throw new AppError('User not found', 401);
     }
+
+    console.log('[Auth] User authenticated successfully:', userWithRole.email);
 
     // Parse permissions if JSON string
     if (userWithRole.role_permissions && typeof userWithRole.role_permissions === 'string') {
@@ -73,6 +83,7 @@ export async function requireAuth(request, env) {
     if (error instanceof AppError) {
       throw error;
     }
+    console.error('[Auth] Token verification failed:', error.message);
     throw new AppError('Invalid or expired token', 401);
   }
 }
