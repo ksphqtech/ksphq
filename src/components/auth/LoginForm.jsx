@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { RateLimitCountdown } from './RateLimitCountdown'
+import { LoadingOverlay } from '@/components/ui/loading-overlay'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -118,5 +119,6 @@ export function LoginForm() {
         </CardFooter>
       </form>
     </Card>
+    <LoadingOverlay isOpen={isLoading} message="Logging in..." />
   )
 }

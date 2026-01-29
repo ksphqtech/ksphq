@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { LoadingOverlay } from '@/components/ui/loading-overlay'
 
 export function SignupForm() {
   const [email, setEmail] = useState('')
@@ -109,5 +110,6 @@ export function SignupForm() {
         </CardFooter>
       </form>
     </Card>
+    <LoadingOverlay isOpen={isLoading} message="Creating account..." />
   )
 }
