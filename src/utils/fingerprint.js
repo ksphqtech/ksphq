@@ -12,7 +12,9 @@ export async function getDeviceFingerprint() {
   }
 
   try {
-    const client = new ClientJS()
+    // ClientJS needs to be instantiated differently - check if it's a constructor or a class
+    const ClientJSConstructor = ClientJS.default || ClientJS
+    const client = new ClientJSConstructor()
     cachedFingerprint = client.getFingerprint().toString()
     return cachedFingerprint
   } catch (error) {
