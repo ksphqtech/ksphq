@@ -1,7 +1,9 @@
 /**
  * API Client for KSPHQ Authentication
- * Handles HTTP requests with cookie-based authentication
+ * Handles HTTP requests with Authorization header-based authentication
  */
+
+import { getAccessToken, clearTokens } from '@/utils/tokenStorage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV
@@ -31,12 +33,21 @@ export class APIError extends Error {
  * @throws {APIError} On request failure
  */
 export async function apiRequest(endpoint, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Add Authorization header if not explicitly skipped and token exists
+  if (!options.skipAuth) {
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+  }
+
   const config = {
-    credentials: 'include', // Send httpOnly cookies
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   };
 
@@ -50,6 +61,7 @@ export async function apiRequest(endpoint, options = {}) {
 
       // Dispatch global unauthorized event for 401 responses
       if (response.status === 401) {
+        clearTokens(); // Clear invalid tokens
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
       }
 

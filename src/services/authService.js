@@ -5,6 +5,7 @@
 
 import { get, post, patch } from '@/lib/api';
 import { getDeviceFingerprint } from '@/utils/fingerprint';
+import { setTokens, getRefreshToken, clearTokens } from '@/utils/tokenStorage';
 
 export const authService = {
   /**
@@ -18,8 +19,15 @@ export const authService = {
     const data = await post('/auth/login', { email, password }, {
       headers: {
         'X-Device-Fingerprint': fingerprint
-      }
+      },
+      skipAuth: true // Don't add Authorization header for login
     });
+
+    // Store tokens from response
+    if (data.data.accessToken && data.data.refreshToken) {
+      setTokens(data.data.accessToken, data.data.refreshToken);
+    }
+
     return data.data.user;
   },
 
@@ -34,8 +42,15 @@ export const authService = {
     const data = await post('/auth/signup', { email, password }, {
       headers: {
         'X-Device-Fingerprint': fingerprint
-      }
+      },
+      skipAuth: true // Don't add Authorization header for signup
     });
+
+    // Store tokens from response
+    if (data.data.accessToken && data.data.refreshToken) {
+      setTokens(data.data.accessToken, data.data.refreshToken);
+    }
+
     return data.data.user;
   },
 
@@ -45,7 +60,12 @@ export const authService = {
    * @returns {Promise<void>}
    */
   async logout() {
-    await post('/auth/logout');
+    try {
+      await post('/auth/logout');
+    } finally {
+      // Always clear tokens, even if API call fails
+      clearTokens();
+    }
   },
 
   /**
@@ -84,7 +104,21 @@ export const authService = {
    * @returns {Promise<Object>} Updated user data
    */
   async refreshToken() {
-    const data = await post('/auth/refresh');
+    const refreshToken = getRefreshToken();
+
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const data = await post('/auth/refresh', { refreshToken }, {
+      skipAuth: true // Don't use access token for refresh
+    });
+
+    // Store NEW tokens (rotation)
+    if (data.data.accessToken && data.data.refreshToken) {
+      setTokens(data.data.accessToken, data.data.refreshToken);
+    }
+
     return data.data.user;
   },
 

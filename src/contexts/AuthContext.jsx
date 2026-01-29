@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authService } from '@/services/authService'
 import { hasPermission } from '@/lib/auth'
+import { hasTokens, clearTokens } from '@/utils/tokenStorage'
 
 const AuthContext = createContext({
   user: null,
@@ -25,11 +26,19 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     async function initAuth() {
       try {
+        // Check if we have tokens stored
+        if (!hasTokens()) {
+          console.log('[Auth] No tokens found, skipping user fetch')
+          return;
+        }
+
+        console.log('[Auth] Tokens found, fetching current user')
         const userData = await authService.getCurrentUser()
         setUser(userData)
       } catch (error) {
-        console.error('Auth init failed:', error)
-        // Don't show error toast on init - user might not be logged in
+        console.error('[Auth] Init failed:', error)
+        // Clear invalid tokens
+        clearTokens()
       } finally {
         setIsLoading(false)
       }
@@ -116,7 +125,9 @@ export function AuthProvider({ children }) {
   // Handle 401 globally - redirect to login when unauthorized
   useEffect(() => {
     function handleUnauthorized() {
+      console.log('[Auth] Unauthorized event received')
       setUser(null)
+      clearTokens() // Clear invalid tokens
       navigate('/login')
     }
 
@@ -168,6 +179,7 @@ export function AuthProvider({ children }) {
       console.error('Logout error:', error)
     } finally {
       setUser(null)
+      clearTokens() // Clear tokens from storage
     }
   }, [])
 
