@@ -11,7 +11,10 @@ export async function createAccessToken(payload, secret, expiresIn = '15m') {
   const encoder = new TextEncoder();
   const secretKey = encoder.encode(secret);
 
-  const token = await new SignJWT(payload)
+  const token = await new SignJWT({
+    ...payload,
+    jti: crypto.randomUUID(),
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(expiresIn)

@@ -114,7 +114,12 @@ export function AuthProvider({ children }) {
       setUser(userData)
       return { success: true }
     } catch (error) {
-      return { success: false, error: error.message }
+      return {
+        success: false,
+        error: error.message,
+        statusCode: error.status,
+        retryAfter: error.data?.error?.details?.retryAfter
+      }
     } finally {
       setIsAuthenticating(false)
     }

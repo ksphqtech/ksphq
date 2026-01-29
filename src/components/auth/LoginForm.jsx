@@ -5,16 +5,25 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { RateLimitCountdown } from './RateLimitCountdown'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [rateLimitInfo, setRateLimitInfo] = useState(null)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Don't submit if rate limited
+    if (rateLimitInfo) {
+      toast.error('Please wait for the countdown to finish')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -24,13 +33,24 @@ export function LoginForm() {
         toast.success('Welcome back!')
         navigate('/dashboard')
       } else {
-        toast.error(result.error || 'Login failed')
+        // Check if error is rate limiting (429)
+        if (result.statusCode === 429 && result.retryAfter) {
+          setRateLimitInfo({ retryAfter: result.retryAfter })
+          // Don't show toast - countdown component will display the message
+        } else {
+          toast.error(result.error || 'Login failed')
+        }
       }
     } catch (error) {
       toast.error('Connection error. Please try again.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleCountdownExpired = () => {
+    setRateLimitInfo(null)
+    toast.success('You can try logging in again now')
   }
 
   return (
@@ -43,6 +63,14 @@ export function LoginForm() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {/* Rate limit countdown */}
+          {rateLimitInfo && (
+            <RateLimitCountdown
+              retryAfter={rateLimitInfo.retryAfter}
+              onExpired={handleCountdownExpired}
+            />
+          )}
+
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -54,7 +82,7 @@ export function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              disabled={isLoading}
+              disabled={isLoading || rateLimitInfo}
             />
           </div>
           <div className="space-y-2">
@@ -68,7 +96,7 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              disabled={isLoading}
+              disabled={isLoading || rateLimitInfo}
             />
           </div>
           <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
@@ -78,7 +106,7 @@ export function LoginForm() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || rateLimitInfo}>
             {isLoading ? 'Logging in...' : 'Login'}
           </Button>
           <p className="text-sm text-center text-muted-foreground">

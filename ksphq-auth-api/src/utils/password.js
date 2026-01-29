@@ -1,14 +1,13 @@
 import bcrypt from 'bcryptjs';
 
-const BCRYPT_ROUNDS = 12;
-
 /**
  * Hash a password using bcrypt
  * @param {string} password - Plain text password
+ * @param {number} rounds - Number of bcrypt rounds (default: 10)
  * @returns {Promise<string>} Hashed password
  */
-export async function hashPassword(password) {
-  return await bcrypt.hash(password, BCRYPT_ROUNDS);
+export async function hashPassword(password, rounds = 10) {
+  return await bcrypt.hash(password, rounds);
 }
 
 /**

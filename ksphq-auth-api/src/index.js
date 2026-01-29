@@ -1,6 +1,7 @@
 import { handleOptions, addCorsHeaders } from './middleware/cors.js';
 import { handleError, asyncHandler } from './middleware/errorHandler.js';
 import { requireAuth } from './middleware/auth.js';
+import { addSecurityHeaders } from './middleware/security.js';
 import { signup, login, logout, refresh, trackActivity } from './handlers/auth.js';
 import { getCurrentUser, updateUserProfile, changePassword } from './handlers/user.js';
 
@@ -67,11 +68,33 @@ export default {
         );
       }
 
-      // Add CORS headers to all responses
-      return addCorsHeaders(response, env);
+      // Add CORS headers and security headers to all responses
+      let finalResponse = addCorsHeaders(response, env);
+      finalResponse = addSecurityHeaders(finalResponse, env);
+      return finalResponse;
     } catch (error) {
-      const errorResponse = handleError(error);
-      return addCorsHeaders(errorResponse, env);
+      const errorResponse = handleError(error, env);
+      let finalResponse = addCorsHeaders(errorResponse, env);
+      finalResponse = addSecurityHeaders(finalResponse, env);
+      return finalResponse;
     }
   },
+
+  async scheduled(event, env, ctx) {
+    // Daily cleanup of expired tokens and rate limits
+    const { cleanupRevokedAccessTokens } = await import('./db/queries.js');
+
+    try {
+      await cleanupRevokedAccessTokens(env.DB);
+
+      // Also cleanup expired rate limits
+      await env.DB.prepare(
+        `DELETE FROM rate_limits WHERE reset_time < datetime('now')`
+      ).run();
+
+      console.log('Scheduled cleanup completed');
+    } catch (error) {
+      console.error('Scheduled cleanup failed:', error);
+    }
+  }
 };

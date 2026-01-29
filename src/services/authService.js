@@ -4,6 +4,7 @@
  */
 
 import { get, post, patch } from '@/lib/api';
+import { getDeviceFingerprint } from '@/utils/fingerprint';
 
 export const authService = {
   /**
@@ -13,7 +14,12 @@ export const authService = {
    * @returns {Promise<Object>} User data
    */
   async login(email, password) {
-    const data = await post('/auth/login', { email, password });
+    const fingerprint = await getDeviceFingerprint();
+    const data = await post('/auth/login', { email, password }, {
+      headers: {
+        'X-Device-Fingerprint': fingerprint
+      }
+    });
     return data.data.user;
   },
 
@@ -24,7 +30,12 @@ export const authService = {
    * @returns {Promise<Object>} User data
    */
   async signup(email, password) {
-    const data = await post('/auth/signup', { email, password });
+    const fingerprint = await getDeviceFingerprint();
+    const data = await post('/auth/signup', { email, password }, {
+      headers: {
+        'X-Device-Fingerprint': fingerprint
+      }
+    });
     return data.data.user;
   },
 

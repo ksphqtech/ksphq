@@ -19,8 +19,8 @@ database_id = "3997db28-748b-4f85-a4d4-303e1baa9e12"
 ENVIRONMENT = "production"
 JWT_EXPIRES_IN = "15m"
 REFRESH_TOKEN_EXPIRES_IN = "7d"
-BCRYPT_ROUNDS = "12"
-FRONTEND_URL = "https://ksphq.com"
+BCRYPT_ROUNDS = "10"
+FRONTEND_URL = "https://ksphq.pages.dev"
 
 # Development environment
 [env.development]
@@ -30,7 +30,7 @@ name = "ksphq-auth-api-dev"
 ENVIRONMENT = "development"
 JWT_EXPIRES_IN = "15m"
 REFRESH_TOKEN_EXPIRES_IN = "7d"
-BCRYPT_ROUNDS = "12"
+BCRYPT_ROUNDS = "10"
 FRONTEND_URL = "http://localhost:5173"
 
 [[env.development.d1_databases]]
@@ -46,3 +46,7 @@ database_id = "1b160f45-ce0e-4402-9b1f-a3c85ddf457b"
 # To set secrets:
 # wrangler secret put JWT_SECRET
 # wrangler secret put REFRESH_TOKEN_SECRET
+
+# Cron triggers for scheduled cleanup
+[triggers]
+crons = ["0 2 * * *"]  # Daily at 2 AM UTC

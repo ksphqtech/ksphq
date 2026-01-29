@@ -256,3 +256,35 @@ export async function getUserAuditLogs(db, userId, limit = 50) {
 
   return results.results || [];
 }
+
+/**
+ * Revoke access token by adding to blacklist
+ */
+export async function revokeAccessToken(db, jti, userId, expiresAt, reason = 'logout') {
+  await db.prepare(
+    `INSERT OR IGNORE INTO revoked_access_tokens (jti, user_id, expires_at, reason)
+     VALUES (?, ?, ?, ?)`
+  ).bind(jti, userId, expiresAt, reason).run();
+}
+
+/**
+ * Check if access token is revoked
+ */
+export async function isAccessTokenRevoked(db, jti) {
+  const result = await db.prepare(
+    `SELECT jti FROM revoked_access_tokens
+     WHERE jti = ? AND expires_at > datetime('now')`
+  ).bind(jti).first();
+
+  return !!result;
+}
+
+/**
+ * Clean up expired revoked tokens
+ */
+export async function cleanupRevokedAccessTokens(db) {
+  await db.prepare(
+    `DELETE FROM revoked_access_tokens
+     WHERE expires_at < datetime('now')`
+  ).run();
+}

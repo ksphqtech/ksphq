@@ -17,17 +17,22 @@ export class AppError extends Error {
 /**
  * Handle errors and return appropriate response
  * @param {Error} error - Error object
+ * @param {Object} env - Environment variables
  * @returns {Response} Error response
  */
-export function handleError(error) {
+export function handleError(error, env) {
   console.error('Error:', error);
 
   if (error instanceof AppError) {
-    return errorResponse(error.message, error.statusCode, error.details);
+    return errorResponse(error.message, error.statusCode, error.details, env);
   }
 
-  // Default to 500 for unknown errors
-  return errorResponse('Internal server error', 500);
+  // Sanitize unexpected errors in production
+  const message = env?.ENVIRONMENT === 'production'
+    ? 'An unexpected error occurred. Please try again later.'
+    : error.message || 'Internal server error';
+
+  return errorResponse(message, 500, null, env);
 }
 
 /**

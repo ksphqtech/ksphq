@@ -1,4 +1,5 @@
 import { verifyToken, extractTokenFromCookie } from '../utils/jwt.js';
+import { isAccessTokenRevoked } from '../db/queries.js';
 import { AppError } from './errorHandler.js';
 
 /**
@@ -23,6 +24,15 @@ export async function requireAuth(request, env) {
 
   try {
     const payload = await verifyToken(accessToken, env.JWT_SECRET);
+
+    // Check if token is revoked
+    if (payload.jti) {
+      const isRevoked = await isAccessTokenRevoked(env.DB, payload.jti);
+      if (isRevoked) {
+        throw new AppError('Token has been revoked', 401);
+      }
+    }
+
     return payload;
   } catch (error) {
     throw new AppError('Invalid or expired token', 401);
@@ -64,7 +74,9 @@ export async function verifyRefreshToken(request, env) {
  */
 export function getClientMetadata(request) {
   return {
-    ipAddress: request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown',
+    // SECURITY: Only trust CF-Connecting-IP from Cloudflare
+    // X-Forwarded-For can be spoofed by attackers
+    ipAddress: request.headers.get('CF-Connecting-IP') || 'unknown',
     userAgent: request.headers.get('User-Agent') || 'unknown',
   };
 }

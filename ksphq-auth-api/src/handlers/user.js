@@ -57,10 +57,14 @@ export async function updateUserProfile(request, env, authUser) {
   const validation = validateData(body, updateUserSchema);
 
   if (!validation.success) {
+    const message = env.ENVIRONMENT === 'development'
+      ? validation.errors[0].message
+      : 'Invalid request data. Please check your input and try again.';
+
     throw new AppError(
-      validation.errors[0].message,
+      message,
       400,
-      { errors: validation.errors }
+      env.ENVIRONMENT === 'development' ? { errors: validation.errors } : null
     );
   }
 
@@ -101,17 +105,21 @@ export async function changePassword(request, env, authUser) {
   const { ipAddress, userAgent } = getClientMetadata(request);
 
   // Rate limiting
-  rateLimitPasswordChange(authUser.sub);
+  await rateLimitPasswordChange(env.DB, authUser.sub);
 
   // Parse and validate request
   const body = await request.json();
   const validation = validateData(body, changePasswordSchema);
 
   if (!validation.success) {
+    const message = env.ENVIRONMENT === 'development'
+      ? validation.errors[0].message
+      : 'Invalid request data. Please check your input and try again.';
+
     throw new AppError(
-      validation.errors[0].message,
+      message,
       400,
-      { errors: validation.errors }
+      env.ENVIRONMENT === 'development' ? { errors: validation.errors } : null
     );
   }
 
@@ -129,7 +137,8 @@ export async function changePassword(request, env, authUser) {
   }
 
   // Hash new password
-  const newPasswordHash = await hashPassword(newPassword);
+  const bcryptRounds = parseInt(env.BCRYPT_ROUNDS) || 10;
+  const newPasswordHash = await hashPassword(newPassword, bcryptRounds);
 
   // Update password
   await updatePassword(env.DB, authUser.sub, newPasswordHash);

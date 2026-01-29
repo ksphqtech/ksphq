@@ -1,5 +1,5 @@
 import { hashPassword, comparePassword } from '../utils/password.js';
-import { createAccessToken, createRefreshToken } from '../utils/jwt.js';
+import { createAccessToken, createRefreshToken, verifyToken, extractTokenFromCookie } from '../utils/jwt.js';
 import { successResponse, errorResponse, setCookie, clearCookie } from '../utils/response.js';
 import { validateData, signupSchema, loginSchema } from '../utils/validation.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -15,6 +15,7 @@ import {
   findRefreshToken,
   revokeRefreshToken,
   revokeAllUserTokens,
+  revokeAccessToken,
   createAuditLog,
 } from '../db/queries.js';
 
@@ -66,7 +67,8 @@ async function generateTokens(user, env, request) {
   );
 
   // Store refresh token hash in database
-  const tokenHash = await hashPassword(refreshToken);
+  const bcryptRounds = parseInt(env.BCRYPT_ROUNDS) || 10;
+  const tokenHash = await hashPassword(refreshToken, bcryptRounds);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const { ipAddress, userAgent } = getClientMetadata(request);
 
@@ -88,18 +90,25 @@ async function generateTokens(user, env, request) {
 export async function signup(request, env) {
   const { ipAddress, userAgent } = getClientMetadata(request);
 
-  // Rate limiting
-  rateLimitSignup(ipAddress);
+  // Extract device fingerprint from header
+  const deviceFingerprint = request.headers.get('X-Device-Fingerprint');
+
+  // Rate limiting with device fingerprint
+  await rateLimitSignup(env.DB, ipAddress, deviceFingerprint);
 
   // Parse and validate request
   const body = await request.json();
   const validation = validateData(body, signupSchema);
 
   if (!validation.success) {
+    const message = env.ENVIRONMENT === 'development'
+      ? validation.errors[0].message
+      : 'Invalid request data. Please check your input and try again.';
+
     throw new AppError(
-      validation.errors[0].message,
+      message,
       400,
-      { errors: validation.errors }
+      env.ENVIRONMENT === 'development' ? { errors: validation.errors } : null
     );
   }
 
@@ -112,7 +121,8 @@ export async function signup(request, env) {
   }
 
   // Hash password
-  const passwordHash = await hashPassword(password);
+  const bcryptRounds = parseInt(env.BCRYPT_ROUNDS) || 10;
+  const passwordHash = await hashPassword(password, bcryptRounds);
 
   // Create user
   const user = await createUser(env.DB, {
@@ -155,18 +165,25 @@ export async function signup(request, env) {
 export async function login(request, env) {
   const { ipAddress, userAgent } = getClientMetadata(request);
 
-  // Rate limiting
-  rateLimitLogin(ipAddress);
+  // Extract device fingerprint from header
+  const deviceFingerprint = request.headers.get('X-Device-Fingerprint');
+
+  // Rate limiting with device fingerprint
+  await rateLimitLogin(env.DB, ipAddress, deviceFingerprint);
 
   // Parse and validate request
   const body = await request.json();
   const validation = validateData(body, loginSchema);
 
   if (!validation.success) {
+    const message = env.ENVIRONMENT === 'development'
+      ? validation.errors[0].message
+      : 'Invalid request data. Please check your input and try again.';
+
     throw new AppError(
-      validation.errors[0].message,
+      message,
       400,
-      { errors: validation.errors }
+      env.ENVIRONMENT === 'development' ? { errors: validation.errors } : null
     );
   }
 
@@ -223,7 +240,23 @@ export async function login(request, env) {
 export async function logout(request, env, user) {
   const { ipAddress, userAgent } = getClientMetadata(request);
 
-  // Revoke all user tokens
+  // Revoke current access token if present
+  const cookieHeader = request.headers.get('Cookie');
+  const accessToken = extractTokenFromCookie(cookieHeader, 'access_token');
+
+  if (accessToken) {
+    try {
+      const payload = await verifyToken(accessToken, env.JWT_SECRET);
+      if (payload.jti && payload.exp) {
+        const expiresAt = new Date(payload.exp * 1000).toISOString();
+        await revokeAccessToken(env.DB, payload.jti, user.sub, expiresAt, 'logout');
+      }
+    } catch (e) {
+      // Token might be expired or invalid, ignore
+    }
+  }
+
+  // Revoke all refresh tokens
   await revokeAllUserTokens(env.DB, user.sub);
 
   // Create audit log
