@@ -1,0 +1,20 @@
+{
+  "name": "ksphq-auth-api",
+  "version": "1.0.0",
+  "description": "Production authentication API for KSPHQ using Cloudflare Workers and D1",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "db:migrate:dev": "wrangler d1 execute ksphq-auth-db-dev --local --file=./src/db/schema.sql",
+    "db:migrate:prod": "wrangler d1 execute ksphq-auth-db --file=./src/db/schema.sql"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.2.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.1"
+  }
+}

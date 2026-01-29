@@ -1,19 +1,14 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import {
-  initializeUsers,
-  validateCredentials,
-  getCurrentUser,
-  setCurrentUser,
-  clearCurrentUser,
-  saveUser,
-  findUserByEmail,
-  DEFAULT_PERMISSIONS,
-  hasPermission,
-} from '@/lib/auth'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { authService } from '@/services/authService'
+import { hasPermission } from '@/lib/auth'
 
 const AuthContext = createContext({
   user: null,
   isAuthenticated: false,
+  isLoading: true,
+  isAuthenticating: false,
   login: () => {},
   logout: () => {},
   signup: () => {},
@@ -23,58 +18,143 @@ const AuthContext = createContext({
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const navigate = useNavigate()
 
+  // Initialize auth on mount - fetch current user from API
   useEffect(() => {
-    initializeUsers()
-    const currentUser = getCurrentUser()
-    if (currentUser) {
-      setUser(currentUser)
+    async function initAuth() {
+      try {
+        const userData = await authService.getCurrentUser()
+        setUser(userData)
+      } catch (error) {
+        console.error('Auth init failed:', error)
+        // Don't show error toast on init - user might not be logged in
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+    initAuth()
   }, [])
 
-  const login = (email, password) => {
-    const validatedUser = validateCredentials(email, password)
-    if (validatedUser) {
-      setUser(validatedUser)
-      setCurrentUser(validatedUser)
+  // Auto-refresh access token every 14 minutes (before 15min expiry)
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(
+      async () => {
+        try {
+          const refreshedUser = await authService.refreshToken()
+          setUser(refreshedUser)
+        } catch (error) {
+          console.error('Token refresh failed:', error)
+          // If refresh fails, log user out
+          await logout()
+        }
+      },
+      14 * 60 * 1000
+    ) // 14 minutes
+
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Idle timeout tracking
+  useEffect(() => {
+    if (!user) return
+
+    const timeoutMinutes = user.idleTimeoutMinutes || 60
+    let idleTimer
+
+    function resetIdleTimer() {
+      clearTimeout(idleTimer)
+
+      // Track activity with API (debounced)
+      authService.trackActivity().catch(console.error)
+
+      idleTimer = setTimeout(
+        () => {
+          logout()
+          toast.info('You were logged out due to inactivity')
+        },
+        timeoutMinutes * 60 * 1000
+      )
+    }
+
+    // Track user activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
+    events.forEach((event) => {
+      window.addEventListener(event, resetIdleTimer)
+    })
+
+    resetIdleTimer() // Start timer
+
+    return () => {
+      clearTimeout(idleTimer)
+      events.forEach((event) => {
+        window.removeEventListener(event, resetIdleTimer)
+      })
+    }
+  }, [user])
+
+  // Handle 401 globally - redirect to login when unauthorized
+  useEffect(() => {
+    function handleUnauthorized() {
+      setUser(null)
+      navigate('/login')
+    }
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
+  }, [navigate])
+
+  const login = async (email, password) => {
+    setIsAuthenticating(true)
+    try {
+      const userData = await authService.login(email, password)
+      setUser(userData)
       return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    } finally {
+      setIsAuthenticating(false)
     }
-    return { success: false, error: 'Invalid email or password' }
   }
 
-  const signup = (email, password, role = 'user') => {
-    const existingUser = findUserByEmail(email)
-    if (existingUser) {
-      return { success: false, error: 'User already exists' }
+  const signup = async (email, password) => {
+    setIsAuthenticating(true)
+    try {
+      const userData = await authService.signup(email, password)
+      setUser(userData)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    } finally {
+      setIsAuthenticating(false)
     }
-
-    const newUser = {
-      id: crypto.randomUUID(),
-      email,
-      password,
-      role,
-      permissions: DEFAULT_PERMISSIONS[role],
-      createdAt: new Date().toISOString(),
-    }
-
-    saveUser(newUser)
-    setUser(newUser)
-    setCurrentUser(newUser)
-    return { success: true }
   }
 
-  const logout = () => {
-    setUser(null)
-    clearCurrentUser()
-  }
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setUser(null)
+    }
+  }, [])
 
   const checkPermission = (tool) => {
-    return hasPermission(user, tool)
+    if (!user) return false
+    if (user.role === 'admin') return true
+    return user.permissions?.[tool] === true
   }
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    )
   }
 
   return (
@@ -82,6 +162,8 @@ export function AuthProvider({ children }) {
       value={{
         user,
         isAuthenticated: !!user,
+        isLoading,
+        isAuthenticating,
         login,
         logout,
         signup,

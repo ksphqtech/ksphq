@@ -1,0 +1,46 @@
+# Cloudflare Workers Configuration for KSPHQ Auth API
+
+name = "ksphq-auth-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+node_compat = true
+
+# Cloudflare account ID (replace with your actual account ID)
+# Get from: wrangler whoami
+account_id = "your-cloudflare-account-id"
+
+# D1 Database bindings
+[[d1_databases]]
+binding = "DB"
+database_name = "ksphq-auth-db"
+database_id = "your-database-id"
+
+# Environment variables (non-sensitive)
+[vars]
+ENVIRONMENT = "production"
+JWT_EXPIRES_IN = "15m"
+REFRESH_TOKEN_EXPIRES_IN = "7d"
+BCRYPT_ROUNDS = "12"
+FRONTEND_URL = "https://ksphq.com"
+
+# Development environment
+[env.development]
+name = "ksphq-auth-api-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+FRONTEND_URL = "http://localhost:5173"
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "ksphq-auth-db-dev"
+database_id = "dev-database-id"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# Required secrets:
+# - JWT_SECRET: Secret key for signing access tokens (256-bit random string)
+# - REFRESH_TOKEN_SECRET: Secret key for signing refresh tokens (256-bit random string)
+#
+# To set secrets:
+# wrangler secret put JWT_SECRET
+# wrangler secret put REFRESH_TOKEN_SECRET

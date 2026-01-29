@@ -17,16 +17,20 @@ export function LoginForm() {
     e.preventDefault()
     setIsLoading(true)
 
-    const result = login(email, password)
+    try {
+      const result = await login(email, password)
 
-    if (result.success) {
-      toast.success('Login successful!')
-      navigate('/dashboard')
-    } else {
-      toast.error(result.error || 'Login failed')
+      if (result.success) {
+        toast.success('Welcome back!')
+        navigate('/dashboard')
+      } else {
+        toast.error(result.error || 'Login failed')
+      }
+    } catch (error) {
+      toast.error('Connection error. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

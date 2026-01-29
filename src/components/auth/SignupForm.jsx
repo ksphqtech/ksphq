@@ -22,23 +22,22 @@ export function SignupForm() {
       return
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters')
-      return
-    }
-
     setIsLoading(true)
 
-    const result = signup(email, password, 'user')
+    try {
+      const result = await signup(email, password)
 
-    if (result.success) {
-      toast.success('Account created successfully!')
-      navigate('/dashboard')
-    } else {
-      toast.error(result.error || 'Signup failed')
+      if (result.success) {
+        toast.success('Account created successfully!')
+        navigate('/dashboard')
+      } else {
+        toast.error(result.error || 'Signup failed')
+      }
+    } catch (error) {
+      toast.error('Connection error. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
@@ -72,7 +71,7 @@ export function SignupForm() {
             <Input
               id="password"
               type="password"
-              placeholder="Create a password (min. 6 characters)"
+              placeholder="Min. 8 chars, 1 uppercase, 1 lowercase, 1 number"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
