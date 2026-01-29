@@ -16,15 +16,19 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { PersonalInfoFields, WorkDetailsFields, AccountSettingsFields } from './UserFormFields';
-import { useUpdateUser, useUsers } from '@/hooks/useUsers';
+import { useUpdateUser, useUser, useUsers } from '@/hooks/useUsers';
 import { useRoles } from '@/hooks/useRoles';
 import { useOrgUnits } from '@/hooks/useOrgUnits';
 
 export function EditUserDialog({ user, open, onOpenChange }) {
-  const updateUser = useUpdateUser();
+  const updateUserMutation = useUpdateUser();
   const { data: rolesData } = useRoles();
   const { data: orgUnitsData } = useOrgUnits();
   const { data: usersData } = useUsers();
+
+  // Fetch full user details when dialog opens
+  const { data: fullUserData, isLoading: isLoadingUser } = useUser(user?.id);
+  const fullUser = fullUserData?.user;
 
   const [activeTab, setActiveTab] = useState('personal');
   const [formData, setFormData] = useState({});
@@ -39,32 +43,32 @@ export function EditUserDialog({ user, open, onOpenChange }) {
   const roles = rolesData?.roles || [];
   const users = usersData?.users || [];
 
-  // Initialize form data when user changes
+  // Initialize form data when full user details are loaded
   useEffect(() => {
-    if (user && open) {
+    if (fullUser && open) {
       setFormData({
-        id: user.id,
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        email: user.email || '',
-        phone_number: user.phone_number || '',
-        employee_id: user.employee_id || '',
-        title: user.title || '',
-        role_id: user.role_id || '',
-        branch_id: user.branch_id || '',
-        department_id: user.department_id || '',
-        shift_id: user.shift_id || '',
-        team_id: user.team_id || '',
-        group_id: user.group_id || '',
-        manager_id: user.manager_id || '',
-        is_active: user.is_active !== false,
-        idle_timeout_minutes: user.idle_timeout_minutes || 60,
-        account_expires_at: user.account_expires_at || '',
+        id: fullUser.id,
+        first_name: fullUser.first_name || '',
+        last_name: fullUser.last_name || '',
+        email: fullUser.email || '',
+        phone_number: fullUser.phone_number || '',
+        employee_id: fullUser.employee_id || '',
+        title: fullUser.title || '',
+        role_id: fullUser.role_id || '',
+        branch_id: fullUser.branch_id || '',
+        department_id: fullUser.department_id || '',
+        shift_id: fullUser.shift_id || '',
+        team_id: fullUser.team_id || '',
+        group_id: fullUser.group_id || '',
+        manager_id: fullUser.manager_id || '',
+        is_active: fullUser.is_active !== false,
+        idle_timeout_minutes: fullUser.idle_timeout_minutes || 60,
+        account_expires_at: fullUser.account_expires_at || '',
       });
       setErrors({});
       setActiveTab('personal');
     }
-  }, [user, open]);
+  }, [fullUser, open]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -103,11 +107,16 @@ export function EditUserDialog({ user, open, onOpenChange }) {
 
     // Only send changed fields
     const updates = {};
-    const originalUser = user;
+    const originalUser = fullUser || user;
 
     Object.keys(formData).forEach(key => {
       if (key === 'id') return; // Don't send ID
-      if (formData[key] !== originalUser[key]) {
+
+      // Handle null vs empty string comparisons
+      const formValue = formData[key] === '' ? null : formData[key];
+      const originalValue = originalUser[key] === '' ? null : originalUser[key];
+
+      if (formValue !== originalValue) {
         updates[key] = formData[key];
       }
     });
@@ -118,7 +127,7 @@ export function EditUserDialog({ user, open, onOpenChange }) {
     }
 
     try {
-      await updateUser.mutateAsync({ userId: user.id, updates });
+      await updateUserMutation.mutateAsync({ userId: user.id, updates });
       onOpenChange(false);
     } catch (error) {
       // Error is handled by the hook
@@ -132,6 +141,20 @@ export function EditUserDialog({ user, open, onOpenChange }) {
     return email?.substring(0, 2).toUpperCase() || 'U';
   };
 
+  // Show loading state while fetching full user details
+  if (open && isLoadingUser) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <span className="ml-3 text-muted-foreground">Loading user details...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -139,7 +162,7 @@ export function EditUserDialog({ user, open, onOpenChange }) {
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarFallback>
-                {getInitials(user?.first_name, user?.last_name, user?.email)}
+                {getInitials(fullUser?.first_name || user?.first_name, fullUser?.last_name || user?.last_name, fullUser?.email || user?.email)}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -204,8 +227,8 @@ export function EditUserDialog({ user, open, onOpenChange }) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={updateUser.isPending}>
-            {updateUser.isPending ? 'Saving...' : 'Save Changes'}
+          <Button onClick={handleSubmit} disabled={updateUserMutation.isPending}>
+            {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>
