@@ -3,7 +3,13 @@
  * Handles HTTP requests with cookie-based authentication
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV
+    ? 'http://localhost:8787'
+    : (() => {
+        throw new Error('VITE_API_BASE_URL must be set in production')
+      })()
+  );
 
 /**
  * Custom API Error class
