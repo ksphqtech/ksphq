@@ -9,6 +9,8 @@ const rateLimitStore = new Map();
 
 /**
  * Clean up expired rate limit entries
+ * Note: Cleanup happens inline during rate limit checks
+ * (Workers don't allow setInterval in global scope)
  */
 function cleanupExpiredEntries() {
   const now = Date.now();
@@ -19,9 +21,6 @@ function cleanupExpiredEntries() {
   }
 }
 
-// Clean up every 5 minutes
-setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
-
 /**
  * Rate limit middleware
  * @param {string} key - Unique identifier (IP, user ID, etc.)
@@ -30,6 +29,11 @@ setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
  * @throws {AppError} If rate limit exceeded
  */
 export function checkRateLimit(key, maxAttempts, windowMs) {
+  // Periodically clean up expired entries (every ~100 requests)
+  if (Math.random() < 0.01) {
+    cleanupExpiredEntries();
+  }
+
   const now = Date.now();
   const limitKey = `${key}`;
 

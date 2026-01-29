@@ -2,18 +2,17 @@
 
 name = "ksphq-auth-api"
 main = "src/index.js"
-compatibility_date = "2024-01-01"
-node_compat = true
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare account ID (replace with your actual account ID)
-# Get from: wrangler whoami
-account_id = "your-cloudflare-account-id"
+# Cloudflare account ID
+account_id = "a4d22a38e2110450a1c2f1366381b4fb"
 
 # D1 Database bindings
 [[d1_databases]]
 binding = "DB"
 database_name = "ksphq-auth-db"
-database_id = "your-database-id"
+database_id = "3997db28-748b-4f85-a4d4-303e1baa9e12"
 
 # Environment variables (non-sensitive)
 [vars]
@@ -29,12 +28,15 @@ name = "ksphq-auth-api-dev"
 
 [env.development.vars]
 ENVIRONMENT = "development"
+JWT_EXPIRES_IN = "15m"
+REFRESH_TOKEN_EXPIRES_IN = "7d"
+BCRYPT_ROUNDS = "12"
 FRONTEND_URL = "http://localhost:5173"
 
 [[env.development.d1_databases]]
 binding = "DB"
 database_name = "ksphq-auth-db-dev"
-database_id = "dev-database-id"
+database_id = "1b160f45-ce0e-4402-9b1f-a3c85ddf457b"
 
 # Secrets (set via: wrangler secret put SECRET_NAME)
 # Required secrets:

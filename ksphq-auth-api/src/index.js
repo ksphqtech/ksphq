@@ -10,7 +10,8 @@ import { getCurrentUser, updateUserProfile, changePassword } from './handlers/us
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const { pathname, method } = request;
+    const pathname = url.pathname;
+    const method = request.method;
 
     try {
       // Handle CORS preflight
