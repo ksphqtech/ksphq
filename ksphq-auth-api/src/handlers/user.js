@@ -19,9 +19,16 @@ function formatUserData(user) {
   // Parse role_permissions if it's a string
   let rolePermissions = null;
   if (user.role_permissions) {
-    rolePermissions = typeof user.role_permissions === 'string'
-      ? JSON.parse(user.role_permissions)
-      : user.role_permissions;
+    try {
+      rolePermissions = typeof user.role_permissions === 'string'
+        ? JSON.parse(user.role_permissions)
+        : user.role_permissions;
+    } catch (error) {
+      console.error('Failed to parse role_permissions:', error);
+      console.error('Raw value:', user.role_permissions);
+      // Return null instead of crashing
+      rolePermissions = null;
+    }
   }
 
   return {
@@ -55,6 +62,11 @@ function formatUserData(user) {
  * Get current user profile
  */
 export async function getCurrentUser(request, env, authUser) {
+  // Validate authUser has required fields
+  if (!authUser || !authUser.sub) {
+    throw new AppError('Invalid authentication token - missing user ID', 401);
+  }
+
   const user = await findUserById(env.DB, authUser.sub);
 
   if (!user) {

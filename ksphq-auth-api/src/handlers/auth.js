@@ -28,9 +28,16 @@ function formatUserData(user) {
   // Parse role_permissions if it's a string
   let rolePermissions = null;
   if (user.role_permissions) {
-    rolePermissions = typeof user.role_permissions === 'string'
-      ? JSON.parse(user.role_permissions)
-      : user.role_permissions;
+    try {
+      rolePermissions = typeof user.role_permissions === 'string'
+        ? JSON.parse(user.role_permissions)
+        : user.role_permissions;
+    } catch (error) {
+      console.error('Failed to parse role_permissions:', error);
+      console.error('Raw value:', user.role_permissions);
+      // Return null instead of crashing
+      rolePermissions = null;
+    }
   }
 
   return {
@@ -425,6 +432,11 @@ export async function refresh(request, env) {
  * Update user last activity timestamp
  */
 export async function trackActivity(request, env, user) {
+  // Validate user has required fields
+  if (!user || !user.sub) {
+    throw new AppError('Invalid authentication token - missing user ID', 401);
+  }
+
   await updateLastActivity(env.DB, user.sub);
   return successResponse({ message: 'Activity tracked' });
 }

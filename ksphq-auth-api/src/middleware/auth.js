@@ -65,6 +65,9 @@ export async function requireAuth(request, env) {
       }
     }
 
+    // Add JWT sub claim for handlers that expect it
+    userWithRole.sub = payload.sub;
+
     return userWithRole;
   } catch (error) {
     if (error instanceof AppError) {

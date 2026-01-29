@@ -141,15 +141,15 @@ export function WorkDetailsFields({
         <div className="space-y-2">
           <Label htmlFor="branch_id">Branch</Label>
           <Select
-            value={formData.branch_id || ''}
-            onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
+            value={formData.branch_id || 'none'}
+            onValueChange={(value) => setFormData({ ...formData, branch_id: value === 'none' ? null : value })}
             disabled={disabled}
           >
             <SelectTrigger id="branch_id">
               <SelectValue placeholder="Select branch" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {branches.map(branch => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -162,15 +162,15 @@ export function WorkDetailsFields({
         <div className="space-y-2">
           <Label htmlFor="department_id">Department</Label>
           <Select
-            value={formData.department_id || ''}
-            onValueChange={(value) => setFormData({ ...formData, department_id: value })}
+            value={formData.department_id || 'none'}
+            onValueChange={(value) => setFormData({ ...formData, department_id: value === 'none' ? null : value })}
             disabled={disabled}
           >
             <SelectTrigger id="department_id">
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {departments.map(dept => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.name}
@@ -185,15 +185,15 @@ export function WorkDetailsFields({
         <div className="space-y-2">
           <Label htmlFor="shift_id">Shift</Label>
           <Select
-            value={formData.shift_id || ''}
-            onValueChange={(value) => setFormData({ ...formData, shift_id: value })}
+            value={formData.shift_id || 'none'}
+            onValueChange={(value) => setFormData({ ...formData, shift_id: value === 'none' ? null : value })}
             disabled={disabled}
           >
             <SelectTrigger id="shift_id">
               <SelectValue placeholder="Select shift" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {shifts.map(shift => (
                 <SelectItem key={shift.id} value={shift.id}>
                   {shift.name}
@@ -206,15 +206,15 @@ export function WorkDetailsFields({
         <div className="space-y-2">
           <Label htmlFor="team_id">Team</Label>
           <Select
-            value={formData.team_id || ''}
-            onValueChange={(value) => setFormData({ ...formData, team_id: value })}
+            value={formData.team_id || 'none'}
+            onValueChange={(value) => setFormData({ ...formData, team_id: value === 'none' ? null : value })}
             disabled={disabled}
           >
             <SelectTrigger id="team_id">
               <SelectValue placeholder="Select team" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {teams.map(team => (
                 <SelectItem key={team.id} value={team.id}>
                   {team.name}
@@ -228,15 +228,15 @@ export function WorkDetailsFields({
       <div className="space-y-2">
         <Label htmlFor="group_id">Group</Label>
         <Select
-          value={formData.group_id || ''}
-          onValueChange={(value) => setFormData({ ...formData, group_id: value })}
+          value={formData.group_id || 'none'}
+          onValueChange={(value) => setFormData({ ...formData, group_id: value === 'none' ? null : value })}
           disabled={disabled}
         >
           <SelectTrigger id="group_id">
             <SelectValue placeholder="Select group" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {groups.map(group => (
               <SelectItem key={group.id} value={group.id}>
                 {group.name}
@@ -249,15 +249,15 @@ export function WorkDetailsFields({
       <div className="space-y-2">
         <Label htmlFor="manager_id">Reports To (Manager)</Label>
         <Select
-          value={formData.manager_id || ''}
-          onValueChange={(value) => setFormData({ ...formData, manager_id: value })}
+          value={formData.manager_id || 'none'}
+          onValueChange={(value) => setFormData({ ...formData, manager_id: value === 'none' ? null : value })}
           disabled={disabled}
         >
           <SelectTrigger id="manager_id">
             <SelectValue placeholder="Select manager" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {managerOptions.map(user => (
               <SelectItem key={user.id} value={user.id}>
                 {user.first_name && user.last_name
