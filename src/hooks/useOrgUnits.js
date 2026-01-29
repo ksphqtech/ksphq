@@ -4,26 +4,16 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orgUnitApi } from '../lib/orgUnitApi';
-import { useToast } from '../components/ui/use-toast';
+import { toast } from 'sonner';
 
-/**
- * Query hook to list organizational units
- * @param {Object} params - Query parameters
- * @returns {QueryResult} React Query result
- */
 export function useOrgUnits(params = {}) {
   return useQuery({
     queryKey: ['org-units', params],
     queryFn: () => orgUnitApi.list(params),
-    staleTime: 300000, // 5 minutes
+    staleTime: 300000,
   });
 }
 
-/**
- * Query hook to get a single org unit
- * @param {string} unitId - Org unit ID
- * @returns {QueryResult} React Query result
- */
 export function useOrgUnit(unitId) {
   return useQuery({
     queryKey: ['org-units', unitId],
@@ -33,94 +23,52 @@ export function useOrgUnit(unitId) {
   });
 }
 
-/**
- * Mutation hook to create an org unit
- * @returns {MutationResult} React Query mutation
- */
 export function useCreateOrgUnit() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: orgUnitApi.create,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['org-units'] });
-
-      toast({
-        title: 'Success',
-        description: data.message || 'Organizational unit created successfully',
-      });
+      toast.success(data.message || 'Organizational unit created successfully');
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create organizational unit',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to create organizational unit');
     },
   });
 }
 
-/**
- * Mutation hook to update an org unit
- * @returns {MutationResult} React Query mutation
- */
 export function useUpdateOrgUnit() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: ({ unitId, updates }) => orgUnitApi.update(unitId, updates),
     onSuccess: (data, { unitId }) => {
       queryClient.invalidateQueries({ queryKey: ['org-units'] });
       queryClient.invalidateQueries({ queryKey: ['org-units', unitId] });
-
-      toast({
-        title: 'Success',
-        description: data.message || 'Organizational unit updated successfully',
-      });
+      toast.success(data.message || 'Organizational unit updated successfully');
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update organizational unit',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to update organizational unit');
     },
   });
 }
 
-/**
- * Mutation hook to delete an org unit
- * @returns {MutationResult} React Query mutation
- */
 export function useDeleteOrgUnit() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: orgUnitApi.delete,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['org-units'] });
-
-      toast({
-        title: 'Success',
-        description: data.message || 'Organizational unit deleted successfully',
-      });
+      toast.success(data.message || 'Organizational unit deleted successfully');
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete organizational unit',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to delete organizational unit');
     },
   });
 }
 
-/**
- * Convenience hooks for specific org unit types
- */
 export function useBranches() {
   return useOrgUnits({ type: 'branch' });
 }

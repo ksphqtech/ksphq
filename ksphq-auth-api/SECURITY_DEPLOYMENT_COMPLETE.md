@@ -2,7 +2,9 @@
 
 **Deployment Date:** 2026-01-29
 **Production URL:** https://ksphq-auth-api.joshua-klimek.workers.dev
-**Status:** All 6 critical security issues resolved and deployed
+**Status:** All 6 critical security issues resolved and deployed to production
+
+**Important:** This is a PRODUCTION deployment guide. All changes are deployed directly to production using `wrangler deploy`.
 
 ---
 
@@ -116,13 +118,16 @@ cache-control: no-store, no-cache, must-revalidate, private
 
 ## 🗄️ Database Migrations
 
-All migrations successfully executed on **production database**:
+All migrations successfully executed on **production database** (`ksphq-auth-db`):
 
 ```bash
-✅ 001_add_rate_limiting.sql
-✅ 002_add_token_revocation.sql
-✅ 003_performance_indexes.sql
-✅ 004_fix_indexes.sql (removed non-deterministic WHERE clauses)
+# Executed with production database (no --local flag):
+wrangler d1 execute ksphq-auth-db --file=./src/db/migrations/001_add_rate_limiting.sql
+wrangler d1 execute ksphq-auth-db --file=./src/db/migrations/002_add_token_revocation.sql
+wrangler d1 execute ksphq-auth-db --file=./src/db/migrations/003_performance_indexes.sql
+wrangler d1 execute ksphq-auth-db --file=./src/db/migrations/004_fix_indexes.sql
+
+✅ All migrations completed successfully
 ```
 
 **New Tables:**
@@ -293,9 +298,9 @@ curl https://ksphq-auth-api.joshua-klimek.workers.dev/health
 
 If you encounter any issues with the security implementation:
 
-1. Check Cloudflare Workers logs: `wrangler tail`
-2. Verify database state: `wrangler d1 execute ksphq-auth-db --remote --command "SELECT * FROM rate_limits LIMIT 10"`
-3. Review audit logs in the database
+1. Check Cloudflare Workers logs: `wrangler tail ksphq-auth-api`
+2. Verify database state: `wrangler d1 execute ksphq-auth-db --command "SELECT * FROM rate_limits LIMIT 10"`
+3. Review audit logs: `wrangler d1 execute ksphq-auth-db --command "SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 10"`
 
 ---
 

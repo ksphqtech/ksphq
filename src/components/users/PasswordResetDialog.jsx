@@ -21,10 +21,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AlertCircle, Copy, CheckCircle2, KeyRound } from 'lucide-react';
 import { useResetPassword } from '@/hooks/useUsers';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 export function PasswordResetDialog({ user, open, onOpenChange }) {
-  const { toast } = useToast();
   const resetPassword = useResetPassword();
 
   const [passwordOption, setPasswordOption] = useState('auto');
@@ -97,10 +96,7 @@ export function PasswordResetDialog({ user, open, onOpenChange }) {
   const handleCopyPassword = () => {
     const password = generatedPassword || customPassword;
     navigator.clipboard.writeText(password);
-    toast({
-      title: 'Copied!',
-      description: 'Password copied to clipboard',
-    });
+    toast.success('Password copied to clipboard');
   };
 
   const handleClose = () => {

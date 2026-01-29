@@ -193,9 +193,9 @@ Result: Only Employee A locked out, others work normally
 
 ## How to Test
 
-### Frontend Testing (Browser)
+### Production Testing (Browser)
 
-1. **Open login page:** http://localhost:5173/login (dev) or https://ksphq.pages.dev/login (prod)
+1. **Open login page:** https://ksphq.pages.dev/login
 
 2. **Test countdown timer:**
    - Enter wrong credentials 5 times
@@ -253,17 +253,12 @@ curl -X POST https://ksphq-auth-api.joshua-klimek.workers.dev/auth/login \
 To deploy frontend changes:
 
 ```bash
-# Build the frontend
-npm run build
-
-# Deploy to Cloudflare Pages (or your hosting)
-# Option 1: Git push (if auto-deploy is configured)
+# Commit changes
 git add .
 git commit -m "Implement rate limiting UX improvements with device fingerprinting"
-git push
+git push origin main
 
-# Option 2: Manual deploy
-npx wrangler pages deploy dist
+# Cloudflare Pages will automatically deploy within 1-2 minutes
 ```
 
 ---

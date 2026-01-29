@@ -20,10 +20,9 @@ import { PersonalInfoFields, WorkDetailsFields, AccountSettingsFields } from './
 import { useCreateUser, useUsers } from '@/hooks/useUsers';
 import { useRoles } from '@/hooks/useRoles';
 import { useOrgUnits } from '@/hooks/useOrgUnits';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 export function CreateUserDialog({ open, onOpenChange }) {
-  const { toast } = useToast();
   const createUser = useCreateUser();
   const { data: rolesData } = useRoles();
   const { data: orgUnitsData } = useOrgUnits();
@@ -153,10 +152,7 @@ export function CreateUserDialog({ open, onOpenChange }) {
 
   const handleCopyPassword = () => {
     navigator.clipboard.writeText(generatedPassword);
-    toast({
-      title: 'Copied!',
-      description: 'Password copied to clipboard',
-    });
+    toast.success('Password copied to clipboard');
   };
 
   const handleClose = () => {
