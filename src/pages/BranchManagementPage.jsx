@@ -27,21 +27,24 @@ export function BranchManagementPage() {
       setIsLoading(true);
       const result = await orgUnitApi.list({ type: 'branch' });
 
-      // Validate result is an array before setting state
-      if (!Array.isArray(result)) {
-        console.warn('BranchManagementPage: orgUnitApi.list did not return an array:', result);
+      // Extract units array from response object
+      const units = result?.units || result;
+
+      // Validate units is an array before setting state
+      if (!Array.isArray(units)) {
+        console.warn('BranchManagementPage: Could not extract units array:', result);
         setBranches([]);
         setBranchUsers({});
         return;
       }
 
-      setBranches(result);
+      setBranches(units);
 
       // Load user counts for each branch
       const userCounts = {};
-      if (result.length > 0) {
+      if (units.length > 0) {
         await Promise.all(
-          result.map(async (branch) => {
+          units.map(async (branch) => {
             try {
               const users = await branchApi.getBranchUsers(branch.id);
               // Validate users is an array
