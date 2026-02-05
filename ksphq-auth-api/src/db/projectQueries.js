@@ -1,6 +1,6 @@
 /**
  * Project Control - Database Query Functions for Projects
- * Comprehensive CRUD operations with branch/department scoping
+ * Comprehensive CRUD operations with branch scoping
  */
 
 import { AppError, ConflictError, NotFoundError } from '../utils/errors.js';
@@ -25,24 +25,14 @@ function applyScopeToProjectQuery(currentUser, baseQuery, bindings = []) {
   let scopeCondition = '';
   const scopeBindings = [];
 
-  // Branch-level scope
+  // Branch-level scope (only available scope for projects table)
   if (projectsPerm === 'branch' && currentUser.branch_id) {
     scopeCondition = ' AND p.branch_id = ?';
     scopeBindings.push(currentUser.branch_id);
   }
-  // Department-level scope
-  else if (projectsPerm === 'department' && currentUser.department_id) {
-    scopeCondition = ' AND p.department_id = ?';
-    scopeBindings.push(currentUser.department_id);
-  }
-  // Team-level scope
-  else if (projectsPerm === 'team' && currentUser.team_id) {
-    scopeCondition = ' AND p.team_id = ?';
-    scopeBindings.push(currentUser.team_id);
-  }
   // View own projects only
   else if (projectsPerm === 'view_own') {
-    scopeCondition = ' AND (p.created_by = ? OR p.owner_id = ? OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = ?))';
+    scopeCondition = ' AND (p.created_by = ? OR p.project_manager_id = ? OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = ?))';
     scopeBindings.push(currentUser.id, currentUser.id, currentUser.id);
   }
   // No permission - return empty
@@ -67,11 +57,9 @@ function applyScopeToProjectQuery(currentUser, baseQuery, bindings = []) {
 export async function listProjects(db, filters = {}, userId, userPermissions) {
   const {
     branch_id = null,
-    department_id = null,
-    team_id = null,
     status = null,
     priority = null,
-    owner_id = null,
+    project_manager_id = null,
     search = null,
     include_deleted = false,
     sort = 'created_at:desc',
@@ -83,9 +71,7 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
   let baseQuery = `
     FROM projects p
     LEFT JOIN organizational_units b ON p.branch_id = b.id
-    LEFT JOIN organizational_units d ON p.department_id = d.id
-    LEFT JOIN organizational_units t ON p.team_id = t.id
-    LEFT JOIN users owner ON p.owner_id = owner.id
+    LEFT JOIN users pm ON p.project_manager_id = pm.id
     LEFT JOIN users creator ON p.created_by = creator.id
     WHERE 1=1
   `;
@@ -103,16 +89,6 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
     bindings.push(branch_id);
   }
 
-  if (department_id) {
-    baseQuery += ' AND p.department_id = ?';
-    bindings.push(department_id);
-  }
-
-  if (team_id) {
-    baseQuery += ' AND p.team_id = ?';
-    bindings.push(team_id);
-  }
-
   if (status) {
     baseQuery += ' AND p.status = ?';
     bindings.push(status);
@@ -123,20 +99,20 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
     bindings.push(priority);
   }
 
-  if (owner_id) {
-    baseQuery += ' AND p.owner_id = ?';
-    bindings.push(owner_id);
+  if (project_manager_id) {
+    baseQuery += ' AND p.project_manager_id = ?';
+    bindings.push(project_manager_id);
   }
 
   if (!include_deleted) {
-    baseQuery += ' AND p.deleted_at IS NULL';
+    baseQuery += ' AND p.is_active = 1';
   }
 
   // Search
   if (search) {
-    baseQuery += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.project_code LIKE ?)';
+    baseQuery += ' AND (p.name LIKE ? OR p.description LIKE ?)';
     const searchTerm = `%${search}%`;
-    bindings.push(searchTerm, searchTerm, searchTerm);
+    bindings.push(searchTerm, searchTerm);
   }
 
   // Count total
@@ -149,7 +125,7 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
 
   // Parse sorting
   const [sortField, sortOrder] = sort.split(':');
-  const validSortFields = ['created_at', 'updated_at', 'name', 'start_date', 'end_date', 'priority', 'status'];
+  const validSortFields = ['created_at', 'updated_at', 'name', 'priority', 'status', 'completion_percentage'];
   const orderBy = validSortFields.includes(sortField) ? sortField : 'created_at';
   const order = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
@@ -158,29 +134,24 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
   const query = `
     SELECT
       p.id,
-      p.project_code,
       p.name,
       p.description,
       p.status,
       p.priority,
-      p.start_date,
-      p.end_date,
-      p.budget,
+      p.dates,
+      p.completion_percentage,
+      p.budget_amount,
       p.actual_cost,
-      p.owner_id,
+      p.project_manager_id,
       p.branch_id,
-      p.department_id,
-      p.team_id,
       p.created_at,
       p.updated_at,
-      p.deleted_at,
+      p.is_active,
       b.name as branch_name,
-      d.name as department_name,
-      t.name as team_name,
-      owner.first_name || ' ' || owner.last_name as owner_name,
+      pm.first_name || ' ' || pm.last_name as project_manager_name,
       creator.first_name || ' ' || creator.last_name as created_by_name,
-      (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND deleted_at IS NULL) as task_count,
-      (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status = 'completed' AND deleted_at IS NULL) as completed_task_count
+      (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND is_active = 1) as task_count,
+      (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status = 'completed' AND is_active = 1) as completed_task_count
     ${baseQuery}
     ORDER BY p.${orderBy} ${order}
     LIMIT ? OFFSET ?
@@ -211,20 +182,16 @@ export async function getProjectById(db, projectId) {
     SELECT
       p.*,
       b.name as branch_name,
-      d.name as department_name,
-      t.name as team_name,
-      owner.first_name || ' ' || owner.last_name as owner_name,
-      owner.email as owner_email,
+      pm.first_name || ' ' || pm.last_name as project_manager_name,
+      pm.email as project_manager_email,
       creator.first_name || ' ' || creator.last_name as created_by_name,
       updater.first_name || ' ' || updater.last_name as updated_by_name
     FROM projects p
     LEFT JOIN organizational_units b ON p.branch_id = b.id
-    LEFT JOIN organizational_units d ON p.department_id = d.id
-    LEFT JOIN organizational_units t ON p.team_id = t.id
-    LEFT JOIN users owner ON p.owner_id = owner.id
+    LEFT JOIN users pm ON p.project_manager_id = pm.id
     LEFT JOIN users creator ON p.created_by = creator.id
     LEFT JOIN users updater ON p.updated_by = updater.id
-    WHERE p.id = ? AND p.deleted_at IS NULL
+    WHERE p.id = ? AND p.is_active = 1
   `;
 
   const project = await db.prepare(query).bind(projectId).first();
@@ -236,26 +203,26 @@ export async function getProjectById(db, projectId) {
   // Get project members
   const membersQuery = `
     SELECT
-      pm.id,
-      pm.user_id,
-      pm.role,
-      pm.added_at,
+      pme.id,
+      pme.user_id,
+      pme.role,
+      pme.added_at,
       u.first_name || ' ' || u.last_name as user_name,
       u.email as user_email
-    FROM project_members pm
-    LEFT JOIN users u ON pm.user_id = u.id
-    WHERE pm.project_id = ?
-    ORDER BY pm.added_at ASC
+    FROM project_members pme
+    LEFT JOIN users u ON pme.user_id = u.id
+    WHERE pme.project_id = ?
+    ORDER BY pme.added_at ASC
   `;
   const membersResult = await db.prepare(membersQuery).bind(projectId).all();
   project.members = membersResult.results || [];
 
   // Parse JSON fields if any
-  if (project.custom_fields) {
+  if (project.dates && typeof project.dates === 'string') {
     try {
-      project.custom_fields = JSON.parse(project.custom_fields);
+      project.dates = JSON.parse(project.dates);
     } catch (e) {
-      project.custom_fields = null;
+      project.dates = null;
     }
   }
 
@@ -271,71 +238,57 @@ export async function getProjectById(db, projectId) {
  */
 export async function createProject(db, data, userId) {
   const {
-    project_code,
     name,
     description = null,
     status = 'planning',
     priority = 'medium',
-    start_date,
-    end_date = null,
-    budget = null,
-    owner_id,
+    dates = null,
+    completion_percentage = 0,
+    budget_amount = null,
+    project_manager_id,
     branch_id = null,
-    department_id = null,
-    team_id = null,
-    custom_fields = null,
   } = data;
 
-  // Check project_code uniqueness
-  const existing = await db
-    .prepare('SELECT id FROM projects WHERE project_code = ? COLLATE NOCASE')
-    .bind(project_code)
-    .first();
-
-  if (existing) {
-    throw new ConflictError('Project code already in use');
+  // Validate dates if provided
+  if (dates) {
+    if (typeof dates === 'object' && dates.end_date && dates.start_date) {
+      if (new Date(dates.end_date) < new Date(dates.start_date)) {
+        throw new AppError('End date must be after start date', 400);
+      }
+    }
   }
 
-  // Validate dates
-  if (end_date && new Date(end_date) < new Date(start_date)) {
-    throw new AppError('End date must be after start date', 400);
-  }
-
-  // Validate owner exists
-  const owner = await db
-    .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL')
-    .bind(owner_id)
+  // Validate project manager exists
+  const projectManager = await db
+    .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1')
+    .bind(project_manager_id)
     .first();
 
-  if (!owner) {
-    throw new AppError('Invalid project owner', 400);
+  if (!projectManager) {
+    throw new AppError('Invalid project manager', 400);
   }
 
   // Create project
   const result = await db
     .prepare(
       `INSERT INTO projects (
-        project_code, name, description, status, priority,
-        start_date, end_date, budget, actual_cost,
-        owner_id, branch_id, department_id, team_id,
-        custom_fields, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING id, project_code, name, status, priority, created_at`
+        name, description, status, priority,
+        dates, completion_percentage, budget_amount, actual_cost,
+        project_manager_id, branch_id,
+        created_by, updated_by, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 1)
+      RETURNING id, name, status, priority, created_at`
     )
     .bind(
-      project_code,
       name,
       description,
       status,
       priority,
-      start_date,
-      end_date,
-      budget,
-      owner_id,
+      dates ? JSON.stringify(dates) : null,
+      completion_percentage,
+      budget_amount,
+      project_manager_id,
       branch_id,
-      department_id,
-      team_id,
-      custom_fields ? JSON.stringify(custom_fields) : null,
       userId,
       userId
     )
@@ -350,14 +303,14 @@ export async function createProject(db, data, userId) {
     .bind(result.id, userId)
     .run();
 
-  // If owner is different from creator, add them too
-  if (owner_id !== userId) {
+  // If project manager is different from creator, add them too
+  if (project_manager_id !== userId) {
     await db
       .prepare(
         `INSERT INTO project_members (project_id, user_id, role)
          VALUES (?, ?, 'manager')`
       )
-      .bind(result.id, owner_id)
+      .bind(result.id, project_manager_id)
       .run();
   }
 
@@ -365,7 +318,7 @@ export async function createProject(db, data, userId) {
   await createAuditLog(db, {
     userId,
     action: 'project_created',
-    details: `Created project ${name} (${project_code})`,
+    details: `Created project ${name}`,
     category: 'project_management',
     severity: 'info',
   });
@@ -418,24 +371,27 @@ export async function updateProject(db, projectId, updates, userId) {
     values.push(updates.priority);
   }
 
-  if (updates.start_date !== undefined) {
-    fields.push('start_date = ?');
-    values.push(updates.start_date);
-  }
-
-  if (updates.end_date !== undefined) {
-    // Validate dates if both are being set
-    const startDate = updates.start_date !== undefined ? updates.start_date : before.start_date;
-    if (updates.end_date && startDate && new Date(updates.end_date) < new Date(startDate)) {
-      throw new AppError('End date must be after start date', 400);
+  if (updates.dates !== undefined) {
+    // Validate dates if provided
+    if (updates.dates && typeof updates.dates === 'object') {
+      if (updates.dates.end_date && updates.dates.start_date) {
+        if (new Date(updates.dates.end_date) < new Date(updates.dates.start_date)) {
+          throw new AppError('End date must be after start date', 400);
+        }
+      }
     }
-    fields.push('end_date = ?');
-    values.push(updates.end_date);
+    fields.push('dates = ?');
+    values.push(updates.dates ? JSON.stringify(updates.dates) : null);
   }
 
-  if (updates.budget !== undefined) {
-    fields.push('budget = ?');
-    values.push(updates.budget);
+  if (updates.completion_percentage !== undefined) {
+    fields.push('completion_percentage = ?');
+    values.push(updates.completion_percentage);
+  }
+
+  if (updates.budget_amount !== undefined) {
+    fields.push('budget_amount = ?');
+    values.push(updates.budget_amount);
   }
 
   if (updates.actual_cost !== undefined) {
@@ -443,38 +399,23 @@ export async function updateProject(db, projectId, updates, userId) {
     values.push(updates.actual_cost);
   }
 
-  if (updates.owner_id !== undefined) {
-    // Validate owner exists
-    const owner = await db
-      .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL')
-      .bind(updates.owner_id)
+  if (updates.project_manager_id !== undefined) {
+    // Validate project manager exists
+    const projectManager = await db
+      .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1')
+      .bind(updates.project_manager_id)
       .first();
 
-    if (!owner) {
-      throw new AppError('Invalid project owner', 400);
+    if (!projectManager) {
+      throw new AppError('Invalid project manager', 400);
     }
-    fields.push('owner_id = ?');
-    values.push(updates.owner_id);
+    fields.push('project_manager_id = ?');
+    values.push(updates.project_manager_id);
   }
 
   if (updates.branch_id !== undefined) {
     fields.push('branch_id = ?');
     values.push(updates.branch_id);
-  }
-
-  if (updates.department_id !== undefined) {
-    fields.push('department_id = ?');
-    values.push(updates.department_id);
-  }
-
-  if (updates.team_id !== undefined) {
-    fields.push('team_id = ?');
-    values.push(updates.team_id);
-  }
-
-  if (updates.custom_fields !== undefined) {
-    fields.push('custom_fields = ?');
-    values.push(updates.custom_fields ? JSON.stringify(updates.custom_fields) : null);
   }
 
   if (fields.length === 0) {
@@ -491,7 +432,7 @@ export async function updateProject(db, projectId, updates, userId) {
     .prepare(
       `UPDATE projects
        SET ${fields.join(', ')}
-       WHERE id = ? AND deleted_at IS NULL`
+       WHERE id = ? AND is_active = 1`
     )
     .bind(...values)
     .run();
@@ -528,7 +469,7 @@ export async function deleteProject(db, projectId, userId) {
   const activeTasks = await db
     .prepare(
       `SELECT COUNT(*) as count FROM tasks
-       WHERE project_id = ? AND status != 'completed' AND deleted_at IS NULL`
+       WHERE project_id = ? AND status != 'completed' AND is_active = 1`
     )
     .bind(projectId)
     .first();
@@ -537,24 +478,23 @@ export async function deleteProject(db, projectId, userId) {
     throw new AppError('Cannot delete project with active tasks. Complete or delete all tasks first.', 400);
   }
 
-  // Soft delete
+  // Soft delete (set is_active to 0)
   await db
     .prepare(
       `UPDATE projects SET
-        deleted_at = datetime('now'),
-        deleted_by = ?,
+        is_active = 0,
         updated_at = datetime('now'),
         updated_by = ?
        WHERE id = ?`
     )
-    .bind(userId, userId, projectId)
+    .bind(userId, projectId)
     .run();
 
   // Create audit log
   await createAuditLog(db, {
     userId,
     action: 'project_deleted',
-    details: `Deleted project ${project.name} (${project.project_code})`,
+    details: `Deleted project ${project.name}`,
     category: 'project_management',
     severity: 'warning',
   });
@@ -574,7 +514,7 @@ export async function addProjectMember(db, projectId, memberId, role = 'member')
 
   // Validate user exists
   const user = await db
-    .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL')
+    .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1')
     .bind(memberId)
     .first();
 
