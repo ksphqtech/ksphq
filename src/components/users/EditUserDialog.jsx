@@ -37,11 +37,12 @@ export function EditUserDialog({ user, open, onOpenChange }) {
   const [selectedBranchIds, setSelectedBranchIds] = useState([]);
 
   // Extract org units by type
-  const branches = orgUnitsData?.units?.filter(u => u.type === 'branch') || [];
-  const departments = orgUnitsData?.units?.filter(u => u.type === 'department') || [];
-  const shifts = orgUnitsData?.units?.filter(u => u.type === 'shift') || [];
-  const teams = orgUnitsData?.units?.filter(u => u.type === 'team') || [];
-  const groups = orgUnitsData?.units?.filter(u => u.type === 'group') || [];
+  const units = Array.isArray(orgUnitsData?.units) ? orgUnitsData.units : [];
+  const branches = units.filter(u => u.type === 'branch');
+  const departments = units.filter(u => u.type === 'department');
+  const shifts = units.filter(u => u.type === 'shift');
+  const teams = units.filter(u => u.type === 'team');
+  const groups = units.filter(u => u.type === 'group');
   const roles = rolesData?.roles || [];
   const users = usersData?.users || [];
 
@@ -74,7 +75,13 @@ export function EditUserDialog({ user, open, onOpenChange }) {
       async function loadUserBranches() {
         try {
           const userBranches = await branchApi.getUserBranchAssignments(fullUser.id);
-          setSelectedBranchIds(userBranches.map(b => b.id));
+          // Validate it's an array before mapping
+          if (Array.isArray(userBranches) && userBranches.length > 0) {
+            setSelectedBranchIds(userBranches.map(b => b.id));
+          } else if (fullUser.branch_id) {
+            // Fallback to single branch if available
+            setSelectedBranchIds([fullUser.branch_id]);
+          }
         } catch (error) {
           console.error('Failed to load user branches:', error);
           // Fallback to single branch if available

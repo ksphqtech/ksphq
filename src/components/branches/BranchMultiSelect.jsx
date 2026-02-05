@@ -20,9 +20,16 @@ export function BranchMultiSelect({
     async function loadBranches() {
       try {
         const result = await orgUnitApi.list({ type: 'branch' });
-        setBranches(result.filter(b => b.is_active));
+        // Validate result is an array
+        if (Array.isArray(result)) {
+          setBranches(result.filter(b => b.is_active));
+        } else {
+          console.warn('orgUnitApi.list did not return an array:', result);
+          setBranches([]);
+        }
       } catch (error) {
         console.error('Failed to load branches:', error);
+        setBranches([]);
       } finally {
         setIsLoading(false);
       }

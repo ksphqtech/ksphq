@@ -16,9 +16,10 @@ export function UserTableFilters({ filters, onFiltersChange }) {
   const { data: orgUnitsData } = useOrgUnits();
 
   const roles = rolesData?.roles || [];
-  const branches = orgUnitsData?.units?.filter(u => u.type === 'branch') || [];
-  const departments = orgUnitsData?.units?.filter(u => u.type === 'department') || [];
-  const teams = orgUnitsData?.units?.filter(u => u.type === 'team') || [];
+  const units = Array.isArray(orgUnitsData?.units) ? orgUnitsData.units : [];
+  const branches = units.filter(u => u.type === 'branch');
+  const departments = units.filter(u => u.type === 'department');
+  const teams = units.filter(u => u.type === 'team');
 
   const updateFilter = (key, value) => {
     onFiltersChange({ ...filters, [key]: value });

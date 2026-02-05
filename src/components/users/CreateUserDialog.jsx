@@ -56,11 +56,12 @@ export function CreateUserDialog({ open, onOpenChange }) {
   const [selectedBranchIds, setSelectedBranchIds] = useState([]);
 
   // Extract org units by type
-  const branches = orgUnitsData?.units?.filter(u => u.type === 'branch') || [];
-  const departments = orgUnitsData?.units?.filter(u => u.type === 'department') || [];
-  const shifts = orgUnitsData?.units?.filter(u => u.type === 'shift') || [];
-  const teams = orgUnitsData?.units?.filter(u => u.type === 'team') || [];
-  const groups = orgUnitsData?.units?.filter(u => u.type === 'group') || [];
+  const units = Array.isArray(orgUnitsData?.units) ? orgUnitsData.units : [];
+  const branches = units.filter(u => u.type === 'branch');
+  const departments = units.filter(u => u.type === 'department');
+  const shifts = units.filter(u => u.type === 'shift');
+  const teams = units.filter(u => u.type === 'team');
+  const groups = units.filter(u => u.type === 'group');
   const roles = rolesData?.roles || [];
   const users = usersData?.users || [];
 

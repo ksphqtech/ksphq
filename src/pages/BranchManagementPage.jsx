@@ -30,17 +30,20 @@ export function BranchManagementPage() {
 
       // Load user counts for each branch
       const userCounts = {};
-      await Promise.all(
-        result.map(async (branch) => {
-          try {
-            const users = await branchApi.getBranchUsers(branch.id);
-            userCounts[branch.id] = users.length;
-          } catch (error) {
-            console.error(`Failed to load users for branch ${branch.id}:`, error);
-            userCounts[branch.id] = 0;
-          }
-        })
-      );
+      if (Array.isArray(result) && result.length > 0) {
+        await Promise.all(
+          result.map(async (branch) => {
+            try {
+              const users = await branchApi.getBranchUsers(branch.id);
+              // Validate users is an array
+              userCounts[branch.id] = Array.isArray(users) ? users.length : 0;
+            } catch (error) {
+              console.error(`Failed to load users for branch ${branch.id}:`, error);
+              userCounts[branch.id] = 0;
+            }
+          })
+        );
+      }
       setBranchUsers(userCounts);
     } catch (error) {
       console.error('Failed to load branches:', error);
