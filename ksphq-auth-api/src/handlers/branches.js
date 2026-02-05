@@ -9,7 +9,7 @@ async function getCurrentSession(db, userId) {
     SELECT id, active_branch_id
     FROM user_sessions
     WHERE user_id = ? AND expires_at > datetime('now')
-    ORDER BY last_activity DESC
+    ORDER BY last_activity_at DESC
     LIMIT 1
   `).bind(userId).first();
 }
