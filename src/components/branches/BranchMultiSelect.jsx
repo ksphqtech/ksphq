@@ -20,11 +20,15 @@ export function BranchMultiSelect({
     async function loadBranches() {
       try {
         const result = await orgUnitApi.list({ type: 'branch' });
-        // Validate result is an array
-        if (Array.isArray(result)) {
-          setBranches(result.filter(b => b.is_active));
+
+        // Extract units array from response object
+        const units = result?.units || result;
+
+        // Validate units is an array
+        if (Array.isArray(units)) {
+          setBranches(units.filter(b => b.is_active));
         } else {
-          console.warn('orgUnitApi.list did not return an array:', result);
+          console.warn('BranchMultiSelect: Could not extract units array:', result);
           setBranches([]);
         }
       } catch (error) {
