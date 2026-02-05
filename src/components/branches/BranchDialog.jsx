@@ -6,10 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { orgUnitApi } from '@/lib/orgUnitApi';
 import { UserMultiSelect } from '@/components/branches/UserMultiSelect';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export function BranchDialog({ branch, open, onOpenChange, onSave }) {
-  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -33,11 +32,7 @@ export function BranchDialog({ branch, open, onOpenChange, onSave }) {
     e.preventDefault();
 
     if (!formData.name || !formData.code) {
-      toast({
-        title: 'Validation Error',
-        description: 'Branch name and code are required',
-        variant: 'destructive',
-      });
+      toast.error('Branch name and code are required');
       return;
     }
 
@@ -49,29 +44,19 @@ export function BranchDialog({ branch, open, onOpenChange, onSave }) {
           ...formData,
           type: 'branch',
         });
-        toast({
-          title: 'Success',
-          description: 'Branch updated successfully',
-        });
+        toast.success('Branch updated successfully');
       } else {
         await orgUnitApi.create({
           ...formData,
           type: 'branch',
         });
-        toast({
-          title: 'Success',
-          description: 'Branch created successfully',
-        });
+        toast.success('Branch created successfully');
       }
 
       onSave();
     } catch (error) {
       console.error('Failed to save branch:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to save branch',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to save branch');
     } finally {
       setIsLoading(false);
     }
