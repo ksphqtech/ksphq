@@ -6,7 +6,7 @@ export const branchApi = {
    */
   async getUserBranches() {
     const response = await get('/api/user/branches');
-    return response.branches;
+    return response.data?.branches || [];
   },
 
   /**
@@ -21,7 +21,7 @@ export const branchApi = {
    */
   async getActiveBranch() {
     const response = await get('/api/user/active-branch');
-    return response.branch;
+    return response.data?.branch;
   },
 
   /**
@@ -39,7 +39,7 @@ export const branchApi = {
    */
   async getBranchUsers(branchId) {
     const response = await get(`/api/branches/${branchId}/users`);
-    return response.users;
+    return response.data?.users || [];
   },
 
   /**
@@ -47,6 +47,6 @@ export const branchApi = {
    */
   async getUserBranchAssignments(userId) {
     const response = await get(`/api/users/${userId}/branches`);
-    return response.branches;
+    return response.data?.branches || [];
   }
 };
