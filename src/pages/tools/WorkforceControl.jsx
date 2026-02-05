@@ -6,9 +6,7 @@ import {
   MyStats,
   Profile,
   Dashboard,
-  Clients,
   Activities,
-  Projects,
   Shifts,
   Groups,
   Teams,
@@ -29,9 +27,7 @@ export function WorkforceControl() {
         <Route path="my-stats" element={<MyStats />} />
         <Route path="profile" element={<Profile />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="clients" element={<Clients />} />
         <Route path="activities" element={<Activities />} />
-        <Route path="projects" element={<Projects />} />
         <Route path="shifts" element={<Shifts />} />
         <Route path="groups" element={<Groups />} />
         <Route path="teams" element={<Teams />} />

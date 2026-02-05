@@ -13,6 +13,7 @@ import { UsersPage } from '@/pages/UsersPage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import CustomizePage from '@/pages/CustomizePage'
+import { ClientsPage } from '@/pages/ClientsPage'
 import { WorkforceControl } from '@/pages/tools/WorkforceControl'
 import { DockControl } from '@/pages/tools/DockControl'
 import { ProjectControl } from '@/pages/tools/ProjectControl'
@@ -125,6 +126,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CustomizePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clients"
+        element={
+          <ProtectedRoute>
+            <ClientsPage />
           </ProtectedRoute>
         }
       />

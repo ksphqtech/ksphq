@@ -18,6 +18,14 @@ export const NAVIGATION_CONFIG = {
       roles: null,
     },
     {
+      id: 'clients',
+      title: 'Clients',
+      path: '/clients',
+      icon: 'Briefcase',
+      requireAuth: true,
+      roles: null,
+    },
+    {
       id: 'users',
       title: 'Users',
       path: '/users',
@@ -93,24 +101,10 @@ export const NAVIGATION_CONFIG = {
           section: 'Administration'
         },
         {
-          id: 'clients',
-          title: 'Clients',
-          path: '/tools/workforce/clients',
-          icon: 'Briefcase',
-          section: 'Administration'
-        },
-        {
           id: 'activities',
           title: 'Activities',
           path: '/tools/workforce/activities',
           icon: 'Activity',
-          section: 'Administration'
-        },
-        {
-          id: 'projects',
-          title: 'Projects',
-          path: '/tools/workforce/projects',
-          icon: 'FolderKanban',
           section: 'Administration'
         },
         {
