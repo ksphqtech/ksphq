@@ -16,6 +16,10 @@ export function useMainNavigation() {
 
   return useMemo(() => {
     const mainNav = getMainNavigation()
+    if (!Array.isArray(mainNav)) {
+      console.warn('useMainNavigation: mainNav is not an array:', mainNav)
+      return []
+    }
     return filterNavItems(mainNav, user)
   }, [user])
 }
@@ -47,6 +51,12 @@ export function useToolsList(filterByPermissions = false) {
 
   return useMemo(() => {
     const tools = getAllTools()
+
+    // Validate tools is an array
+    if (!Array.isArray(tools)) {
+      console.warn('useToolsList: getAllTools() did not return an array:', tools)
+      return []
+    }
 
     if (!filterByPermissions || !user) {
       return tools

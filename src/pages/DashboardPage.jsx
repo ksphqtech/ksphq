@@ -8,6 +8,21 @@ export function DashboardPage() {
   const { user } = useAuth()
   const toolsConfig = useToolsList()
 
+  // Validate toolsConfig is an array before mapping
+  if (!Array.isArray(toolsConfig)) {
+    console.warn('DashboardPage: toolsConfig is not an array:', toolsConfig)
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">Welcome back!</h1>
+            <p className="text-muted-foreground">Loading tools...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   // Convert tools config to format expected by ToolTile
   const tools = toolsConfig.map(tool => ({
     title: tool.title,

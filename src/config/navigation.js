@@ -267,7 +267,12 @@ export const NAVIGATION_CONFIG = {
 
 // Helper function to get all tools as an array (for dashboard tiles)
 export function getAllTools() {
-  return Object.values(NAVIGATION_CONFIG.tools)
+  if (!NAVIGATION_CONFIG?.tools) {
+    console.warn('getAllTools: NAVIGATION_CONFIG.tools is undefined')
+    return []
+  }
+  const tools = Object.values(NAVIGATION_CONFIG.tools)
+  return Array.isArray(tools) ? tools : []
 }
 
 // Helper function to get a specific tool configuration
