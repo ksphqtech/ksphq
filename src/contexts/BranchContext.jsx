@@ -31,6 +31,15 @@ export function BranchProvider({ children }) {
     async function loadBranches() {
       try {
         const userBranches = await branchApi.getUserBranches();
+
+        // Ensure we have a valid array
+        if (!Array.isArray(userBranches)) {
+          console.warn('getUserBranches did not return an array:', userBranches);
+          setBranches([]);
+          setIsLoading(false);
+          return;
+        }
+
         setBranches(userBranches);
 
         // Restore from localStorage or use active from server
@@ -43,6 +52,7 @@ export function BranchProvider({ children }) {
         setSelectedBranch(active);
       } catch (error) {
         console.error('Failed to load branches:', error);
+        setBranches([]);
       } finally {
         setIsLoading(false);
       }
