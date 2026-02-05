@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function BranchMultiSelect({
   selectedBranchIds = [],
@@ -76,7 +75,7 @@ export function BranchMultiSelect({
   return (
     <Card>
       <CardContent className="p-4">
-        <ScrollArea className="h-[200px]">
+        <div className="max-h-[200px] overflow-y-auto">
           <div className="space-y-3">
             {branches.map((branch) => {
               const isSelected = selectedBranchIds.includes(branch.id);
@@ -119,7 +118,7 @@ export function BranchMultiSelect({
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
         <p className="text-xs text-muted-foreground mt-3">
           Select one or more branches. The primary branch is used as the default.
         </p>
