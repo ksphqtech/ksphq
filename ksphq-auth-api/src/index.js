@@ -47,6 +47,33 @@ import {
   handleDeleteLocation,
   handleSetPrimaryLocation,
 } from './handlers/branchLocations.js';
+import {
+  handleListProjects,
+  handleCreateProject,
+  handleGetProject,
+  handleUpdateProject,
+  handleDeleteProject,
+  handleAddProjectMember,
+  handleRemoveProjectMember,
+} from './handlers/projects.js';
+import {
+  handleListTasks,
+  handleCreateTask,
+  handleUpdateTask,
+  handleDeleteTask,
+  handleAddDependency,
+  handleRemoveDependency,
+} from './handlers/tasks.js';
+import {
+  handleListMaterials,
+  handleGetMaterial,
+  handleCreateMaterial,
+  handleUpdateMaterial,
+  handleDeleteMaterial,
+} from './handlers/materials.js';
+import {
+  handleGetProjectAnalytics,
+} from './handlers/projectAnalytics.js';
 
 /**
  * Extract ID from pathname like /api/users/123abc
@@ -261,6 +288,118 @@ export default {
         request.user = user;
         request.params = { branchId };
         response = await asyncHandler(getBranchUsers)(request, env, null);
+      }
+      // Project Control Routes - Projects
+      else if (pathname === '/api/projects' && method === 'GET') {
+        const user = await requireAuth(request, env);
+        response = await asyncHandler(handleListProjects)(request, env, null, user);
+      }
+      else if (pathname === '/api/projects' && method === 'POST') {
+        const user = await requireAuth(request, env);
+        response = await asyncHandler(handleCreateProject)(request, env, null, user);
+      }
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/tasks$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleListTasks)(request, env, null, user, projectId);
+      }
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/tasks$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleCreateTask)(request, env, null, user, projectId);
+      }
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/members$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleListProjectMembers)(request, env, null, user, projectId);
+      }
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/members$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleAddProjectMember)(request, env, null, user, projectId);
+      }
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/members\/[^/]+$/) && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const parts = pathname.split('/');
+        const projectId = parts[3];
+        const userId = parts[5];
+        response = await asyncHandler(handleRemoveProjectMember)(request, env, null, user, projectId, userId);
+      }
+      // Project Analytics Route
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/analytics$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleGetProjectAnalytics)(request, env, null, user, projectId);
+      }
+      // Project Control Routes - Materials
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/materials$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleListMaterials)(request, env, null, user, projectId);
+      }
+      else if (pathname.match(/^\/api\/projects\/[^/]+\/materials$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const projectId = pathname.split('/')[3];
+        response = await asyncHandler(handleCreateMaterial)(request, env, null, user, projectId);
+      }
+      else if (pathname.startsWith('/api/projects/') && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const projectId = extractId(pathname, '/api/projects/');
+        response = await asyncHandler(handleGetProject)(request, env, null, user, projectId);
+      }
+      else if (pathname.startsWith('/api/projects/') && method === 'PATCH') {
+        const user = await requireAuth(request, env);
+        const projectId = extractId(pathname, '/api/projects/');
+        response = await asyncHandler(handleUpdateProject)(request, env, null, user, projectId);
+      }
+      else if (pathname.startsWith('/api/projects/') && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const projectId = extractId(pathname, '/api/projects/');
+        response = await asyncHandler(handleDeleteProject)(request, env, null, user, projectId);
+      }
+      // Project Control Routes - Tasks
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/dependencies$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const taskId = pathname.split('/')[3];
+        response = await asyncHandler(handleListDependencies)(request, env, null, user, taskId);
+      }
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/dependencies$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const taskId = pathname.split('/')[3];
+        response = await asyncHandler(handleAddDependency)(request, env, null, user, taskId);
+      }
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/dependencies\/[^/]+$/) && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const parts = pathname.split('/');
+        const taskId = parts[3];
+        const depId = parts[5];
+        response = await asyncHandler(handleRemoveDependency)(request, env, null, user, taskId, depId);
+      }
+      else if (pathname.startsWith('/api/tasks/') && method === 'PATCH') {
+        const user = await requireAuth(request, env);
+        const taskId = extractId(pathname, '/api/tasks/');
+        response = await asyncHandler(handleUpdateTask)(request, env, null, user, taskId);
+      }
+      else if (pathname.startsWith('/api/tasks/') && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const taskId = extractId(pathname, '/api/tasks/');
+        response = await asyncHandler(handleDeleteTask)(request, env, null, user, taskId);
+      }
+      // Material Routes (individual material operations)
+      else if (pathname.startsWith('/api/materials/') && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const materialId = extractId(pathname, '/api/materials/');
+        response = await asyncHandler(handleGetMaterial)(request, env, null, user, materialId);
+      }
+      else if (pathname.startsWith('/api/materials/') && method === 'PATCH') {
+        const user = await requireAuth(request, env);
+        const materialId = extractId(pathname, '/api/materials/');
+        response = await asyncHandler(handleUpdateMaterial)(request, env, null, user, materialId);
+      }
+      else if (pathname.startsWith('/api/materials/') && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const materialId = extractId(pathname, '/api/materials/');
+        response = await asyncHandler(handleDeleteMaterial)(request, env, null, user, materialId);
       }
       // Health check
       else if (pathname === '/health' && method === 'GET') {

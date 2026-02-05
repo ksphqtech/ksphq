@@ -1,146 +1,90 @@
+import { useState } from 'react'
 import { ToolLayout } from '@/components/layout/ToolLayout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { filteredProjects } from '@/data/mockData'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
 import { useToolNavigation } from '@/hooks/useNavigation'
-import { useBranchFilteredData } from '@/hooks/useBranchFilteredData'
+import { useProjects } from '@/hooks/useProjects'
+import { ProjectStatsCards } from '@/components/projects/ProjectStatsCards'
+import { ProjectFilters } from '@/components/projects/ProjectFilters'
+import { ProjectListView } from '@/components/projects/ProjectListView'
+import { CreateProjectDialog } from '@/components/projects/dialogs/CreateProjectDialog'
 
 export function ProjectControl() {
   const toolConfig = useToolNavigation('projects')
-  const filteredProjects = useBranchFilteredData(filteredProjects)
+  const [filters, setFilters] = useState({})
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
-  const getStatusVariant = (status) => {
-    switch (status.toLowerCase()) {
-      case 'in progress':
-        return 'default'
-      case 'planning':
-        return 'secondary'
-      case 'completed':
-        return 'outline'
-      case 'on hold':
-        return 'destructive'
-      default:
-        return 'outline'
-    }
-  }
+  // Fetch projects using the hook
+  const { data, isLoading, error } = useProjects(filters)
+  const projects = Array.isArray(data?.projects) ? data.projects : []
 
-  const getPriorityVariant = (priority) => {
-    switch (priority.toLowerCase()) {
-      case 'high':
-        return 'destructive'
-      case 'medium':
-        return 'default'
-      case 'low':
-        return 'secondary'
-      default:
-        return 'outline'
+  // Filter projects based on local filters (search, status, priority)
+  const filteredProjects = projects.filter(project => {
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      const matchesSearch =
+        project.name?.toLowerCase().includes(searchLower) ||
+        project.manager?.toLowerCase().includes(searchLower)
+      if (!matchesSearch) return false
     }
-  }
+
+    // Status filter
+    if (filters.status && project.status !== filters.status) {
+      return false
+    }
+
+    // Priority filter
+    if (filters.priority && project.priority !== filters.priority) {
+      return false
+    }
+
+    return true
+  })
 
   return (
     <ToolLayout
       navItems={toolConfig.subPages}
       toolName="Project Control"
     >
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Projects
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{filteredProjects.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                In Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {filteredProjects.filter(p => p.status === 'In Progress').length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {filteredProjects.filter(p => p.status === 'Completed').length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Avg Completion
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {Math.round(filteredProjects.reduce((acc, p) => acc + parseInt(p.completion), 0) / filteredProjects.length)}%
-              </div>
-            </CardContent>
-          </Card>
+      <div className="p-4 md:p-6 lg:p-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Project Control</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and track all your projects in one place
+            </p>
+          </div>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Project Name</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Completion</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProjects.map((project) => (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">{project.name}</TableCell>
-                    <TableCell>{project.manager}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(project.status)}>
-                        {project.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getPriorityVariant(project.priority)}>
-                        {project.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{project.startDate}</TableCell>
-                    <TableCell>{project.dueDate}</TableCell>
-                    <TableCell>{project.completion}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        {/* Stats Cards */}
+        <ProjectStatsCards
+          projects={filteredProjects}
+          isLoading={isLoading}
+        />
+
+        {/* Filters */}
+        <ProjectFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
+
+        {/* Project List */}
+        <ProjectListView
+          projects={filteredProjects}
+          isLoading={isLoading}
+        />
+
+        {/* Create Project Dialog */}
+        <CreateProjectDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+        />
       </div>
     </ToolLayout>
   )

@@ -19,6 +19,7 @@ import { ClientsPage } from '@/pages/ClientsPage'
 import { WorkforceControl } from '@/pages/tools/WorkforceControl'
 import { DockControl } from '@/pages/tools/DockControl'
 import { ProjectControl } from '@/pages/tools/ProjectControl'
+import { ProjectDetail } from '@/pages/tools/projects'
 import { HQTickets } from '@/pages/tools/HQTickets'
 
 function ProtectedRoute({ children }) {
@@ -168,6 +169,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ProjectControl />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools/projects/:projectId"
+        element={
+          <ProtectedRoute>
+            <ProjectDetail />
           </ProtectedRoute>
         }
       />

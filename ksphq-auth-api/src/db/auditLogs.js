@@ -42,6 +42,16 @@ export const AUDIT_ACTIONS = {
   permission_granted: { category: 'permissions', severity: 'warning' },
   permission_revoked: { category: 'permissions', severity: 'warning' },
 
+  // Project Management
+  project_created: { category: 'project_management', severity: 'info' },
+  project_updated: { category: 'project_management', severity: 'info' },
+  project_deleted: { category: 'project_management', severity: 'warning' },
+  task_created: { category: 'project_management', severity: 'info' },
+  task_updated: { category: 'project_management', severity: 'info' },
+  task_deleted: { category: 'project_management', severity: 'warning' },
+  task_dependency_created: { category: 'project_management', severity: 'info' },
+  task_dependency_removed: { category: 'project_management', severity: 'info' },
+
   // Other
   other: { category: 'other', severity: 'info' },
 };
