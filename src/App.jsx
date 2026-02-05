@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { BranchProvider } from '@/contexts/BranchContext'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { CustomizeProvider } from '@/contexts/CustomizeContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
@@ -11,6 +12,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { BusinessInfoPage } from '@/pages/BusinessInfoPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
+import { BranchManagementPage } from '@/pages/BranchManagementPage'
 import SettingsPage from '@/pages/SettingsPage'
 import CustomizePage from '@/pages/CustomizePage'
 import { ClientsPage } from '@/pages/ClientsPage'
@@ -114,6 +116,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/branches"
+        element={
+          <ProtectedRoute>
+            <BranchManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/settings"
         element={
           <ProtectedRoute>
@@ -178,14 +188,16 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <SettingsProvider>
-          <ThemeProvider>
-            <CustomizeProvider>
-              <AppRoutes />
-              <Toaster />
-            </CustomizeProvider>
-          </ThemeProvider>
-        </SettingsProvider>
+        <BranchProvider>
+          <SettingsProvider>
+            <ThemeProvider>
+              <CustomizeProvider>
+                <AppRoutes />
+                <Toaster />
+              </CustomizeProvider>
+            </ThemeProvider>
+          </SettingsProvider>
+        </BranchProvider>
       </AuthProvider>
     </BrowserRouter>
   )

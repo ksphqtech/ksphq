@@ -3,6 +3,7 @@ import { Moon, Sun, LogOut, User, Laptop } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { getBranding, DEFAULT_BRANDING } from '@/lib/businessInfo'
+import { BranchSwitcher } from '@/components/branches/BranchSwitcher'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -84,6 +85,8 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          <BranchSwitcher />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

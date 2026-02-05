@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useBranch } from '@/contexts/BranchContext';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ import {
 import { getClients } from '@/lib/workforceData';
 
 export function ProjectManagement() {
+  const { effectiveBranchId } = useBranch();
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
@@ -54,11 +56,11 @@ export function ProjectManagement() {
 
   useEffect(() => {
     loadProjects();
-    setClients(getClients());
-  }, []);
+    setClients(getClients(effectiveBranchId));
+  }, [effectiveBranchId]);
 
   const loadProjects = () => {
-    setProjects(getProjects());
+    setProjects(getProjects(effectiveBranchId));
   };
 
   const getClientName = (clientId) => {
@@ -109,6 +111,7 @@ export function ProjectManagement() {
 
     const dataToSave = {
       ...formData,
+      branch_id: effectiveBranchId || editingProject?.branch_id,
       // Convert empty dates to null
       startDate: formData.startDate || null,
       endDate: formData.endDate || null
@@ -117,7 +120,11 @@ export function ProjectManagement() {
     if (editingProject) {
       updateProject(editingProject.id, dataToSave);
     } else {
-      saveProject(dataToSave);
+      const result = saveProject(dataToSave);
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
     }
 
     loadProjects();

@@ -29,6 +29,16 @@ import {
   handleUpdateOrgUnit,
   handleDeleteOrgUnit,
 } from './handlers/orgUnits.js';
+import {
+  getUserBranches,
+  selectBranch,
+  getActiveBranch,
+} from './handlers/branches.js';
+import {
+  assignUserBranches,
+  getBranchUsers,
+  getUserBranchAssignments,
+} from './handlers/userBranches.js';
 
 /**
  * Extract ID from pathname like /api/users/123abc
@@ -175,6 +185,43 @@ export default {
         const user = await requireAuth(request, env);
         const unitId = extractId(pathname, '/api/org-units/');
         response = await asyncHandler(handleDeleteOrgUnit)(request, env, null, user, unitId);
+      }
+      // Branch Management Routes
+      else if (pathname === '/api/user/branches' && method === 'GET') {
+        const user = await requireAuth(request, env);
+        request.user = user;
+        response = await asyncHandler(getUserBranches)(request, env, null);
+      }
+      else if (pathname === '/api/user/branches/select' && method === 'POST') {
+        const user = await requireAuth(request, env);
+        request.user = user;
+        response = await asyncHandler(selectBranch)(request, env, null);
+      }
+      else if (pathname === '/api/user/active-branch' && method === 'GET') {
+        const user = await requireAuth(request, env);
+        request.user = user;
+        response = await asyncHandler(getActiveBranch)(request, env, null);
+      }
+      else if (pathname.startsWith('/api/users/') && pathname.includes('/branches') && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const userId = pathname.split('/')[3];
+        request.user = user;
+        request.params = { userId };
+        response = await asyncHandler(assignUserBranches)(request, env, null);
+      }
+      else if (pathname.startsWith('/api/users/') && pathname.includes('/branches') && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const userId = pathname.split('/')[3];
+        request.user = user;
+        request.params = { userId };
+        response = await asyncHandler(getUserBranchAssignments)(request, env, null);
+      }
+      else if (pathname.startsWith('/api/branches/') && pathname.includes('/users') && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const branchId = pathname.split('/')[3];
+        request.user = user;
+        request.params = { branchId };
+        response = await asyncHandler(getBranchUsers)(request, env, null);
       }
       // Health check
       else if (pathname === '/health' && method === 'GET') {

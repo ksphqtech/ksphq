@@ -42,6 +42,14 @@ export const NAVIGATION_CONFIG = {
       roles: ['admin'],
     },
     {
+      id: 'branches',
+      title: 'Branch Management',
+      path: '/branches',
+      icon: 'Building2',
+      requireAuth: true,
+      roles: ['admin', 'manager'],
+    },
+    {
       id: 'settings',
       title: 'Settings',
       path: '/settings',

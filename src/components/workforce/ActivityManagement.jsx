@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useBranch } from '@/contexts/BranchContext';
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ const CATEGORIES = [
 ];
 
 export function ActivityManagement() {
+  const { effectiveBranchId } = useBranch();
   const [activities, setActivities] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
@@ -59,10 +61,10 @@ export function ActivityManagement() {
 
   useEffect(() => {
     loadActivities();
-  }, []);
+  }, [effectiveBranchId]);
 
   const loadActivities = () => {
-    setActivities(getActivities());
+    setActivities(getActivities(effectiveBranchId));
   };
 
   const handleAdd = () => {
@@ -104,10 +106,20 @@ export function ActivityManagement() {
       return;
     }
 
+    // Ensure branch_id is set
+    const dataToSave = {
+      ...formData,
+      branch_id: effectiveBranchId || editingActivity?.branch_id
+    };
+
     if (editingActivity) {
-      updateActivity(editingActivity.id, formData);
+      updateActivity(editingActivity.id, dataToSave);
     } else {
-      saveActivity(formData);
+      const result = saveActivity(dataToSave);
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
     }
 
     loadActivities();

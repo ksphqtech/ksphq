@@ -9,11 +9,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { dockData } from '@/data/mockData'
+import { filteredDocks } from '@/data/mockData'
 import { useToolNavigation } from '@/hooks/useNavigation'
+import { useBranchFilteredData } from '@/hooks/useBranchFilteredData'
 
 export function DockControl() {
   const toolConfig = useToolNavigation('docks')
+  const filteredDocks = useBranchFilteredData(filteredDocks)
 
   const getStatusVariant = (status) => {
     switch (status.toLowerCase()) {
@@ -42,7 +44,7 @@ export function DockControl() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dockData.length}</div>
+              <div className="text-2xl font-bold">{filteredDocks.length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -53,7 +55,7 @@ export function DockControl() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {dockData.filter(d => d.status === 'Occupied').length}
+                {filteredDocks.filter(d => d.status === 'Occupied').length}
               </div>
             </CardContent>
           </Card>
@@ -65,7 +67,7 @@ export function DockControl() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {dockData.filter(d => d.status === 'Available').length}
+                {filteredDocks.filter(d => d.status === 'Available').length}
               </div>
             </CardContent>
           </Card>
@@ -88,7 +90,7 @@ export function DockControl() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dockData.map((dock) => (
+                {filteredDocks.map((dock) => (
                   <TableRow key={dock.id}>
                     <TableCell className="font-medium">{dock.dockNumber}</TableCell>
                     <TableCell>

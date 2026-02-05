@@ -20,6 +20,7 @@ import { PersonalInfoFields, WorkDetailsFields, AccountSettingsFields } from './
 import { useCreateUser, useUsers } from '@/hooks/useUsers';
 import { useRoles } from '@/hooks/useRoles';
 import { useOrgUnits } from '@/hooks/useOrgUnits';
+import { branchApi } from '@/lib/branchApi';
 import { toast } from 'sonner';
 
 export function CreateUserDialog({ open, onOpenChange }) {
@@ -52,6 +53,7 @@ export function CreateUserDialog({ open, onOpenChange }) {
   });
   const [errors, setErrors] = useState({});
   const [generatedPassword, setGeneratedPassword] = useState(null);
+  const [selectedBranchIds, setSelectedBranchIds] = useState([]);
 
   // Extract org units by type
   const branches = orgUnitsData?.units?.filter(u => u.type === 'branch') || [];
@@ -88,6 +90,7 @@ export function CreateUserDialog({ open, onOpenChange }) {
       });
       setErrors({});
       setGeneratedPassword(null);
+      setSelectedBranchIds([]);
       setActiveTab('personal');
     }
   }, [open]);
@@ -139,6 +142,20 @@ export function CreateUserDialog({ open, onOpenChange }) {
 
     try {
       const result = await createUser.mutateAsync(formData);
+
+      // Assign branches if any were selected
+      if (result.user && selectedBranchIds.length > 0 && formData.branch_id) {
+        try {
+          await branchApi.assignUserBranches(
+            result.user.id,
+            selectedBranchIds,
+            formData.branch_id
+          );
+        } catch (branchError) {
+          console.error('Failed to assign branches:', branchError);
+          // Continue anyway - user was created successfully
+        }
+      }
 
       // Show generated password if available
       if (result.user?.generatedPassword) {
@@ -259,6 +276,8 @@ export function CreateUserDialog({ open, onOpenChange }) {
               groups={groups}
               users={users}
               errors={errors}
+              selectedBranchIds={selectedBranchIds}
+              onBranchSelectionChange={setSelectedBranchIds}
             />
           </TabsContent>
 

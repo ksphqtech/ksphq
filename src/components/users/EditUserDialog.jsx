@@ -19,6 +19,7 @@ import { PersonalInfoFields, WorkDetailsFields, AccountSettingsFields } from './
 import { useUpdateUser, useUser, useUsers } from '@/hooks/useUsers';
 import { useRoles } from '@/hooks/useRoles';
 import { useOrgUnits } from '@/hooks/useOrgUnits';
+import { branchApi } from '@/lib/branchApi';
 
 export function EditUserDialog({ user, open, onOpenChange }) {
   const updateUserMutation = useUpdateUser();
@@ -33,6 +34,7 @@ export function EditUserDialog({ user, open, onOpenChange }) {
   const [activeTab, setActiveTab] = useState('personal');
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
+  const [selectedBranchIds, setSelectedBranchIds] = useState([]);
 
   // Extract org units by type
   const branches = orgUnitsData?.units?.filter(u => u.type === 'branch') || [];
@@ -67,6 +69,21 @@ export function EditUserDialog({ user, open, onOpenChange }) {
       });
       setErrors({});
       setActiveTab('personal');
+
+      // Load user's branch assignments
+      async function loadUserBranches() {
+        try {
+          const userBranches = await branchApi.getUserBranchAssignments(fullUser.id);
+          setSelectedBranchIds(userBranches.map(b => b.id));
+        } catch (error) {
+          console.error('Failed to load user branches:', error);
+          // Fallback to single branch if available
+          if (fullUser.branch_id) {
+            setSelectedBranchIds([fullUser.branch_id]);
+          }
+        }
+      }
+      loadUserBranches();
     }
   }, [fullUser, open]);
 
@@ -128,6 +145,21 @@ export function EditUserDialog({ user, open, onOpenChange }) {
 
     try {
       await updateUserMutation.mutateAsync({ userId: user.id, updates });
+
+      // Update branch assignments if they've changed
+      if (selectedBranchIds.length > 0 && formData.branch_id) {
+        try {
+          await branchApi.assignUserBranches(
+            user.id,
+            selectedBranchIds,
+            formData.branch_id
+          );
+        } catch (branchError) {
+          console.error('Failed to update branch assignments:', branchError);
+          // Continue anyway - user update was successful
+        }
+      }
+
       onOpenChange(false);
     } catch (error) {
       // Error is handled by the hook
@@ -209,6 +241,8 @@ export function EditUserDialog({ user, open, onOpenChange }) {
               groups={groups}
               users={users}
               errors={errors}
+              selectedBranchIds={selectedBranchIds}
+              onBranchSelectionChange={setSelectedBranchIds}
             />
           </TabsContent>
 

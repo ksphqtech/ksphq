@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { BranchMultiSelect } from '@/components/branches/BranchMultiSelect';
 
 /**
  * Personal Information Tab
@@ -119,6 +120,8 @@ export function WorkDetailsFields({
   users = [],
   errors = {},
   disabled = false,
+  selectedBranchIds = [],
+  onBranchSelectionChange,
 }) {
   // Filter out current user from manager list to prevent self-assignment
   const managerOptions = users.filter(u =>
@@ -181,6 +184,20 @@ export function WorkDetailsFields({
           </Select>
         </div>
       </div>
+
+      {/* Multi-Branch Assignment */}
+      {onBranchSelectionChange && (
+        <div className="space-y-2">
+          <Label>Branch Assignments</Label>
+          <BranchMultiSelect
+            selectedBranchIds={selectedBranchIds}
+            onSelectionChange={onBranchSelectionChange}
+            primaryBranchId={formData.branch_id}
+            onPrimaryChange={(branchId) => setFormData({ ...formData, branch_id: branchId })}
+            disabled={disabled}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

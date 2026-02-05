@@ -29,7 +29,29 @@ export async function getCurrentUser(request, env, authUser) {
     throw new AppError('User not found', 404);
   }
 
-  return successResponse(formatUserData(user));
+  // Fetch user's branches
+  const branches = await env.DB.prepare(`
+    SELECT ou.id, ou.name, ou.code, ub.is_primary
+    FROM user_branches ub
+    JOIN organizational_units ou ON ub.branch_id = ou.id
+    WHERE ub.user_id = ? AND ou.is_active = 1
+    ORDER BY ub.is_primary DESC, ou.name ASC
+  `).bind(user.id).all();
+
+  // Get active branch from session
+  const session = await env.DB.prepare(`
+    SELECT active_branch_id
+    FROM user_sessions
+    WHERE user_id = ? AND expires_at > datetime('now')
+    ORDER BY last_activity_at DESC
+    LIMIT 1
+  `).bind(user.id).first();
+
+  const userData = formatUserData(user);
+  userData.branches = branches.results;
+  userData.activeBranchId = session?.active_branch_id || null;
+
+  return successResponse(userData);
 }
 
 /**

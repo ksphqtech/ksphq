@@ -9,11 +9,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { projectData } from '@/data/mockData'
+import { filteredProjects } from '@/data/mockData'
 import { useToolNavigation } from '@/hooks/useNavigation'
+import { useBranchFilteredData } from '@/hooks/useBranchFilteredData'
 
 export function ProjectControl() {
   const toolConfig = useToolNavigation('projects')
+  const filteredProjects = useBranchFilteredData(filteredProjects)
 
   const getStatusVariant = (status) => {
     switch (status.toLowerCase()) {
@@ -57,7 +59,7 @@ export function ProjectControl() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{projectData.length}</div>
+              <div className="text-2xl font-bold">{filteredProjects.length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -68,7 +70,7 @@ export function ProjectControl() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {projectData.filter(p => p.status === 'In Progress').length}
+                {filteredProjects.filter(p => p.status === 'In Progress').length}
               </div>
             </CardContent>
           </Card>
@@ -80,7 +82,7 @@ export function ProjectControl() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {projectData.filter(p => p.status === 'Completed').length}
+                {filteredProjects.filter(p => p.status === 'Completed').length}
               </div>
             </CardContent>
           </Card>
@@ -92,7 +94,7 @@ export function ProjectControl() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {Math.round(projectData.reduce((acc, p) => acc + parseInt(p.completion), 0) / projectData.length)}%
+                {Math.round(filteredProjects.reduce((acc, p) => acc + parseInt(p.completion), 0) / filteredProjects.length)}%
               </div>
             </CardContent>
           </Card>
@@ -116,7 +118,7 @@ export function ProjectControl() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projectData.map((project) => (
+                {filteredProjects.map((project) => (
                   <TableRow key={project.id}>
                     <TableCell className="font-medium">{project.name}</TableCell>
                     <TableCell>{project.manager}</TableCell>

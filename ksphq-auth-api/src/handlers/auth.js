@@ -241,11 +241,18 @@ export async function login(request, env) {
     else if (userAgent.includes('iOS')) deviceName += ' on iOS';
   }
 
+  // Get user's primary branch for initial active_branch_id
+  const primaryBranch = await env.DB.prepare(
+    'SELECT branch_id FROM user_branches WHERE user_id = ? AND is_primary = 1'
+  ).bind(user.id).first();
+
+  const activeBranchId = primaryBranch?.branch_id || user.branch_id;
+
   await env.DB.prepare(
     `INSERT INTO user_sessions (
       user_id, session_token_hash, device_fingerprint, device_name,
-      ip_address, user_agent, expires_at, last_activity_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      ip_address, user_agent, expires_at, last_activity_at, active_branch_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)`
   ).bind(
     user.id,
     sessionTokenHash,
@@ -253,7 +260,8 @@ export async function login(request, env) {
     deviceName,
     ipAddress,
     userAgent,
-    sessionExpiresAt
+    sessionExpiresAt,
+    activeBranchId
   ).run();
 
   // Update last login

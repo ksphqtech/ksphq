@@ -8,12 +8,17 @@ const PROJECTS_KEY = 'workforce_projects';
 // ==================== CLIENTS ====================
 
 /**
- * Get all clients
+ * Get all clients, optionally filtered by branch
+ * @param {string|null} branchId - Branch ID to filter by, or null for all branches
  */
-export function getClients() {
+export function getClients(branchId = null) {
   try {
     const stored = localStorage.getItem(CLIENTS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const clients = stored ? JSON.parse(stored) : [];
+
+    // Filter by branch if specified
+    if (!branchId) return clients; // All branches
+    return clients.filter(c => c.branch_id === branchId);
   } catch (error) {
     console.error('Error loading clients:', error);
     return [];
@@ -21,10 +26,11 @@ export function getClients() {
 }
 
 /**
- * Get active clients only
+ * Get active clients only, optionally filtered by branch
+ * @param {string|null} branchId - Branch ID to filter by, or null for all branches
  */
-export function getActiveClients() {
-  return getClients().filter(client => client.status === 'active');
+export function getActiveClients(branchId = null) {
+  return getClients(branchId).filter(client => client.status === 'active');
 }
 
 /**
@@ -36,10 +42,15 @@ export function getClientById(id) {
 
 /**
  * Save new client
+ * @param {Object} client - Client data including branch_id
  */
 export function saveClient(client) {
   try {
-    const clients = getClients();
+    if (!client.branch_id) {
+      return { success: false, error: 'branch_id is required' };
+    }
+
+    const clients = getClients(); // Get all (unfiltered)
     const newClient = {
       ...client,
       id: client.id || `client_${Date.now()}`,
@@ -110,12 +121,17 @@ export function initializeClients(seedData) {
 // ==================== ACTIVITIES ====================
 
 /**
- * Get all activities
+ * Get all activities, optionally filtered by branch
+ * @param {string|null} branchId - Branch ID to filter by, or null for all branches
  */
-export function getActivities() {
+export function getActivities(branchId = null) {
   try {
     const stored = localStorage.getItem(ACTIVITIES_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const activities = stored ? JSON.parse(stored) : [];
+
+    // Filter by branch if specified
+    if (!branchId) return activities;
+    return activities.filter(a => a.branch_id === branchId);
   } catch (error) {
     console.error('Error loading activities:', error);
     return [];
@@ -123,10 +139,11 @@ export function getActivities() {
 }
 
 /**
- * Get active activities only
+ * Get active activities only, optionally filtered by branch
+ * @param {string|null} branchId - Branch ID to filter by, or null for all branches
  */
-export function getActiveActivities() {
-  return getActivities().filter(activity => activity.status === 'active');
+export function getActiveActivities(branchId = null) {
+  return getActivities(branchId).filter(activity => activity.status === 'active');
 }
 
 /**
@@ -145,10 +162,15 @@ export function getActivitiesByCategory(category) {
 
 /**
  * Save new activity
+ * @param {Object} activity - Activity data including branch_id
  */
 export function saveActivity(activity) {
   try {
-    const activities = getActivities();
+    if (!activity.branch_id) {
+      return { success: false, error: 'branch_id is required' };
+    }
+
+    const activities = getActivities(); // Get all (unfiltered)
     const newActivity = {
       ...activity,
       id: activity.id || `activity_${Date.now()}`,
@@ -219,12 +241,17 @@ export function initializeActivities(seedData) {
 // ==================== PROJECTS ====================
 
 /**
- * Get all projects
+ * Get all projects, optionally filtered by branch
+ * @param {string|null} branchId - Branch ID to filter by, or null for all branches
  */
-export function getProjects() {
+export function getProjects(branchId = null) {
   try {
     const stored = localStorage.getItem(PROJECTS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const projects = stored ? JSON.parse(stored) : [];
+
+    // Filter by branch if specified
+    if (!branchId) return projects;
+    return projects.filter(p => p.branch_id === branchId);
   } catch (error) {
     console.error('Error loading projects:', error);
     return [];
@@ -232,10 +259,11 @@ export function getProjects() {
 }
 
 /**
- * Get active projects only
+ * Get active projects only, optionally filtered by branch
+ * @param {string|null} branchId - Branch ID to filter by, or null for all branches
  */
-export function getActiveProjects() {
-  return getProjects().filter(project => project.status === 'active');
+export function getActiveProjects(branchId = null) {
+  return getProjects(branchId).filter(project => project.status === 'active');
 }
 
 /**
@@ -261,10 +289,15 @@ export function getActiveProjectsByClient(clientId) {
 
 /**
  * Save new project
+ * @param {Object} project - Project data including branch_id
  */
 export function saveProject(project) {
   try {
-    const projects = getProjects();
+    if (!project.branch_id) {
+      return { success: false, error: 'branch_id is required' };
+    }
+
+    const projects = getProjects(); // Get all (unfiltered)
     const newProject = {
       ...project,
       id: project.id || `project_${Date.now()}`,

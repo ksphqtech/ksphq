@@ -1,8 +1,14 @@
 // Mock data for tool tables
 
+// Default branch IDs - replace with actual branch UUIDs from your database
+const BRANCH_HQ = 'branch_hq_001';
+const BRANCH_EAST = 'branch_east_001';
+const BRANCH_WEST = 'branch_west_001';
+
 export const workforceData = [
   {
     id: 1,
+    branch_id: BRANCH_HQ,
     name: 'John Smith',
     position: 'Forklift Operator',
     department: 'Warehouse',
@@ -12,6 +18,7 @@ export const workforceData = [
   },
   {
     id: 2,
+    branch_id: BRANCH_HQ,
     name: 'Sarah Johnson',
     position: 'Warehouse Manager',
     department: 'Warehouse',
@@ -21,6 +28,7 @@ export const workforceData = [
   },
   {
     id: 3,
+    branch_id: BRANCH_EAST,
     name: 'Mike Wilson',
     position: 'Dock Supervisor',
     department: 'Loading',
@@ -30,6 +38,7 @@ export const workforceData = [
   },
   {
     id: 4,
+    branch_id: BRANCH_EAST,
     name: 'Emily Davis',
     position: 'Inventory Clerk',
     department: 'Warehouse',
@@ -39,6 +48,7 @@ export const workforceData = [
   },
   {
     id: 5,
+    branch_id: BRANCH_WEST,
     name: 'Robert Brown',
     position: 'Loader',
     department: 'Loading',
@@ -51,6 +61,7 @@ export const workforceData = [
 export const dockData = [
   {
     id: 1,
+    branch_id: BRANCH_HQ,
     dockNumber: 'Dock 1',
     status: 'Occupied',
     carrier: 'ABC Logistics',
@@ -60,6 +71,7 @@ export const dockData = [
   },
   {
     id: 2,
+    branch_id: BRANCH_HQ,
     dockNumber: 'Dock 2',
     status: 'Available',
     carrier: '-',
@@ -69,6 +81,7 @@ export const dockData = [
   },
   {
     id: 3,
+    branch_id: BRANCH_EAST,
     dockNumber: 'Dock 3',
     status: 'Occupied',
     carrier: 'XYZ Freight',
@@ -78,6 +91,7 @@ export const dockData = [
   },
   {
     id: 4,
+    branch_id: BRANCH_EAST,
     dockNumber: 'Dock 4',
     status: 'Under Maintenance',
     carrier: '-',
@@ -87,6 +101,7 @@ export const dockData = [
   },
   {
     id: 5,
+    branch_id: BRANCH_WEST,
     dockNumber: 'Dock 5',
     status: 'Occupied',
     carrier: 'FastShip Inc',
@@ -99,6 +114,7 @@ export const dockData = [
 export const projectData = [
   {
     id: 1,
+    branch_id: BRANCH_HQ,
     name: 'Warehouse Expansion',
     manager: 'Sarah Johnson',
     status: 'In Progress',
@@ -109,6 +125,7 @@ export const projectData = [
   },
   {
     id: 2,
+    branch_id: BRANCH_EAST,
     name: 'Inventory System Upgrade',
     manager: 'Mike Wilson',
     status: 'Planning',
@@ -119,6 +136,7 @@ export const projectData = [
   },
   {
     id: 3,
+    branch_id: BRANCH_HQ,
     name: 'Safety Training Program',
     manager: 'Emily Davis',
     status: 'In Progress',
@@ -129,6 +147,7 @@ export const projectData = [
   },
   {
     id: 4,
+    branch_id: BRANCH_WEST,
     name: 'Dock Door Automation',
     manager: 'Robert Brown',
     status: 'On Hold',
@@ -139,6 +158,7 @@ export const projectData = [
   },
   {
     id: 5,
+    branch_id: BRANCH_HQ,
     name: 'Fleet Management System',
     manager: 'John Smith',
     status: 'Completed',
@@ -152,6 +172,7 @@ export const projectData = [
 export const ticketData = [
   {
     id: 1,
+    branch_id: BRANCH_HQ,
     ticketNumber: 'TKT-001',
     subject: 'Forklift needs maintenance',
     category: 'Equipment',
@@ -163,6 +184,7 @@ export const ticketData = [
   },
   {
     id: 2,
+    branch_id: BRANCH_HQ,
     ticketNumber: 'TKT-002',
     subject: 'Dock door malfunction',
     category: 'Facility',
@@ -174,6 +196,7 @@ export const ticketData = [
   },
   {
     id: 3,
+    branch_id: BRANCH_EAST,
     ticketNumber: 'TKT-003',
     subject: 'Inventory discrepancy',
     category: 'Operations',
@@ -185,6 +208,7 @@ export const ticketData = [
   },
   {
     id: 4,
+    branch_id: BRANCH_WEST,
     ticketNumber: 'TKT-004',
     subject: 'Schedule change request',
     category: 'HR',
@@ -196,6 +220,7 @@ export const ticketData = [
   },
   {
     id: 5,
+    branch_id: BRANCH_EAST,
     ticketNumber: 'TKT-005',
     subject: 'Security camera offline',
     category: 'Security',

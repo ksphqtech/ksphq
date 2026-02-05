@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useBranch } from '@/contexts/BranchContext';
 import {
   getClients,
   saveClient,
@@ -29,6 +30,7 @@ import {
 } from '@/lib/workforceData';
 
 export function ClientManagement() {
+  const { effectiveBranchId } = useBranch();
   const [clients, setClients] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -42,10 +44,10 @@ export function ClientManagement() {
 
   useEffect(() => {
     loadClients();
-  }, []);
+  }, [effectiveBranchId]);
 
   const loadClients = () => {
-    setClients(getClients());
+    setClients(getClients(effectiveBranchId));
   };
 
   const handleAdd = () => {
@@ -85,10 +87,20 @@ export function ClientManagement() {
       return;
     }
 
+    // Ensure branch_id is set
+    const dataToSave = {
+      ...formData,
+      branch_id: effectiveBranchId || editingClient?.branch_id
+    };
+
     if (editingClient) {
-      updateClient(editingClient.id, formData);
+      updateClient(editingClient.id, dataToSave);
     } else {
-      saveClient(formData);
+      const result = saveClient(dataToSave);
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
     }
 
     loadClients();
