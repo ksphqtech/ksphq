@@ -65,7 +65,9 @@ export function OrgUnitDialog({ unit, open, onOpenChange }) {
       const response = await get('/api/users?limit=1000');
       return response.data;
     },
-    enabled: open && (formData.type === 'branch' || formData.type === 'department'),
+    enabled: !!open && (formData.type === 'branch' || formData.type === 'department'),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: false, // Don't retry on auth errors
   });
 
   const eligibleManagers =

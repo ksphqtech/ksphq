@@ -54,7 +54,9 @@ export function BranchDialog({ branch, open, onOpenChange, onSave }) {
       const response = await get('/api/users?limit=1000');
       return response.data;
     },
-    enabled: open,
+    enabled: !!open, // Only fetch when dialog is open
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: false, // Don't retry on auth errors
   });
 
   const eligibleManagers =
@@ -195,16 +197,16 @@ export function BranchDialog({ branch, open, onOpenChange, onSave }) {
               <div>
                 <Label htmlFor="manager_id">Branch Manager</Label>
                 <Select
-                  value={formData.manager_id}
+                  value={formData.manager_id || 'none'}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, manager_id: value })
+                    setFormData({ ...formData, manager_id: value === 'none' ? '' : value })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a manager (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {eligibleManagers.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.first_name} {user.last_name} - {user.role_name}
