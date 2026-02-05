@@ -1,9 +1,9 @@
 // Mock data for tool tables
 
-// Default branch IDs - replace with actual branch UUIDs from your database
-const BRANCH_HQ = 'branch_hq_001';
-const BRANCH_EAST = 'branch_east_001';
-const BRANCH_WEST = 'branch_west_001';
+// Actual branch IDs from database
+const BRANCH_HQ = 'f3feae14ec049d75df8284befe27051e'; // Headquarters
+const BRANCH_EAST = 'branch_east_001'; // Placeholder - create via Branch Management
+const BRANCH_WEST = 'branch_west_001'; // Placeholder - create via Branch Management
 
 export const workforceData = [
   {
