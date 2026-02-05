@@ -36,6 +36,7 @@ export function PermissionsPage() {
   }, [usersData])
 
   const getInitials = (email) => {
+    if (!email) return 'U'
     return email.substring(0, 2).toUpperCase()
   }
 
@@ -196,7 +197,7 @@ export function PermissionsPage() {
                         <CardTitle className="text-lg">{user.email}</CardTitle>
                         <CardDescription className="flex items-center gap-2">
                           <Badge variant={getRoleBadgeVariant(user.role)}>
-                            {user.role.toUpperCase()}
+                            {user.role?.toUpperCase() || 'USER'}
                           </Badge>
                         </CardDescription>
                       </div>

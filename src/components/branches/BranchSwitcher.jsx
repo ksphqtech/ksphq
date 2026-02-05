@@ -22,11 +22,11 @@ export function BranchSwitcher() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  if (isLoading || branches.length === 0) return null;
+  if (isLoading || !Array.isArray(branches) || branches.length === 0) return null;
 
   const filteredBranches = branches.filter(b =>
-    b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.code.toLowerCase().includes(searchQuery.toLowerCase())
+    b?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b?.code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSelect = async (branchId) => {

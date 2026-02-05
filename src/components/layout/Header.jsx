@@ -38,6 +38,7 @@ export function Header() {
   }, [])
 
   const getInitials = (email) => {
+    if (!email) return 'U'
     return email
       .split('@')[0]
       .substring(0, 2)
@@ -133,7 +134,7 @@ export function Header() {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium">{user?.email}</p>
                   <Badge variant={getRoleBadgeVariant(user?.role)} className="w-fit">
-                    {user?.role?.toUpperCase()}
+                    {user?.role?.toUpperCase() || 'USER'}
                   </Badge>
                 </div>
               </DropdownMenuLabel>

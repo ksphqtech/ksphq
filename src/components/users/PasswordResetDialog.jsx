@@ -108,6 +108,7 @@ export function PasswordResetDialog({ user, open, onOpenChange }) {
     if (firstName && lastName) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
+    if (!email) return 'U';
     return email.substring(0, 2).toUpperCase();
   };
 
