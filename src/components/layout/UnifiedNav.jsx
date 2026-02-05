@@ -44,7 +44,9 @@ export function UnifiedNav({
   }
 
   // Filter items based on user permissions (for main nav)
-  const filteredItems = type === 'main' ? filterNavItems(navItems, user) : navItems
+  const filteredItems = type === 'main'
+    ? filterNavItems(navItems, user)
+    : (Array.isArray(navItems) ? navItems : [])
 
   const NavLink = ({ item }) => {
     const IconComponent = typeof item.icon === 'string'
@@ -136,6 +138,12 @@ export function UnifiedNav({
 
             {/* Show navigation items */}
             {(() => {
+              // Validate filteredItems is an array before processing
+              if (!Array.isArray(filteredItems)) {
+                console.warn('UnifiedNav: filteredItems is not an array:', filteredItems);
+                return null;
+              }
+
               // Group items by section
               const groupedItems = filteredItems.reduce((acc, item) => {
                 const section = item.section || 'default'
@@ -152,7 +160,7 @@ export function UnifiedNav({
                       {section}
                     </h3>
                   )}
-                  {items.map((item, index) => (
+                  {Array.isArray(items) && items.map((item, index) => (
                     <NavLink key={item.id || item.href || item.path || index} item={item} />
                   ))}
                   {sectionIndex < Object.entries(groupedItems).length - 1 && (

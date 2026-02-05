@@ -123,7 +123,7 @@ export function ToolSideNav({ navItems = [], toolName }) {
             {/* Always show Back To Dashboard first */}
             <NavLink item={backToDashboard} onClick={backToDashboard.onClick} />
 
-            {navItems.length > 0 && (
+            {Array.isArray(navItems) && navItems.length > 0 && (
               <>
                 <Separator className="my-2" />
                 {navItems.map((item, index) => (
