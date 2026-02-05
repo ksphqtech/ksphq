@@ -191,33 +191,9 @@ export const NAVIGATION_CONFIG = {
       subPages: [
         {
           id: 'overview',
-          title: 'Projects Overview',
+          title: 'All Projects',
           path: '/tools/projects',
           icon: 'FolderKanban',
-        },
-        {
-          id: 'timeline',
-          title: 'Timeline',
-          path: '/tools/projects/timeline',
-          icon: 'Calendar',
-        },
-        {
-          id: 'reports',
-          title: 'Reports',
-          path: '/tools/projects/reports',
-          icon: 'BarChart3',
-        },
-        {
-          id: 'team',
-          title: 'Team',
-          path: '/tools/projects/team',
-          icon: 'Users',
-        },
-        {
-          id: 'settings',
-          title: 'Settings',
-          path: '/tools/projects/settings',
-          icon: 'Settings',
         },
       ],
     },
