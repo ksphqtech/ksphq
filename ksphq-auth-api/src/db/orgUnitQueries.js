@@ -21,9 +21,13 @@ export async function listOrgUnits(db, options = {}) {
       ou.*,
       p.name as parent_name,
       p.type as parent_type,
+      m.first_name || ' ' || m.last_name as manager_name,
+      m.email as manager_email,
+      m.phone_number as manager_phone,
       COUNT(u.id) as user_count
     FROM organizational_units ou
     LEFT JOIN organizational_units p ON ou.parent_id = p.id
+    LEFT JOIN users m ON ou.manager_id = m.id
     LEFT JOIN users u ON (
       ou.id = u.branch_id OR
       ou.id = u.department_id OR
@@ -73,9 +77,13 @@ export async function getOrgUnitById(db, unitId) {
         ou.*,
         p.name as parent_name,
         p.type as parent_type,
+        m.first_name || ' ' || m.last_name as manager_name,
+        m.email as manager_email,
+        m.phone_number as manager_phone,
         COUNT(u.id) as user_count
        FROM organizational_units ou
        LEFT JOIN organizational_units p ON ou.parent_id = p.id
+       LEFT JOIN users m ON ou.manager_id = m.id
        LEFT JOIN users u ON (
          ou.id = u.branch_id OR
          ou.id = u.department_id OR
@@ -107,7 +115,7 @@ export async function getOrgUnitById(db, unitId) {
  * @returns {object} Created org unit
  */
 export async function createOrgUnit(db, unitData, createdBy) {
-  const { type, name, code, parentId, metadata } = unitData;
+  const { type, name, code, parentId, managerId, isMultiBranch, metadata } = unitData;
 
   // Validate type
   if (!VALID_TYPES.includes(type)) {
@@ -133,15 +141,40 @@ export async function createOrgUnit(db, unitData, createdBy) {
     // e.g., departments can be under branches, teams under departments, etc.
   }
 
+  // Validate manager if provided
+  if (managerId) {
+    const manager = await db
+      .prepare('SELECT id, is_active FROM users WHERE id = ? AND deleted_at IS NULL')
+      .bind(managerId)
+      .first();
+
+    if (!manager) {
+      throw new AppError('Manager not found', 404);
+    }
+
+    if (!manager.is_active) {
+      throw new AppError('Cannot assign inactive user as manager', 400);
+    }
+  }
+
   const metadataJson = metadata ? JSON.stringify(metadata) : null;
 
   const result = await db
     .prepare(
-      `INSERT INTO organizational_units (type, name, code, parent_id, metadata, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO organizational_units (type, name, code, parent_id, manager_id, is_multi_branch, metadata, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING *`
     )
-    .bind(type, name, code || null, parentId || null, metadataJson, createdBy)
+    .bind(
+      type,
+      name,
+      code || null,
+      parentId || null,
+      managerId || null,
+      isMultiBranch ? 1 : 0,
+      metadataJson,
+      createdBy
+    )
     .first();
 
   return {
@@ -198,6 +231,31 @@ export async function updateOrgUnit(db, unitId, updates, updatedBy) {
     }
     fields.push('parent_id = ?');
     values.push(updates.parentId || null);
+  }
+
+  if (updates.managerId !== undefined) {
+    // Validate manager if provided
+    if (updates.managerId) {
+      const manager = await db
+        .prepare('SELECT id, is_active FROM users WHERE id = ? AND deleted_at IS NULL')
+        .bind(updates.managerId)
+        .first();
+
+      if (!manager) {
+        throw new AppError('Manager not found', 404);
+      }
+
+      if (!manager.is_active) {
+        throw new AppError('Cannot assign inactive user as manager', 400);
+      }
+    }
+    fields.push('manager_id = ?');
+    values.push(updates.managerId || null);
+  }
+
+  if (updates.isMultiBranch !== undefined) {
+    fields.push('is_multi_branch = ?');
+    values.push(updates.isMultiBranch ? 1 : 0);
   }
 
   if (updates.metadata !== undefined) {
@@ -344,4 +402,31 @@ export async function getOrgUnitsTree(db, type = null) {
   });
 
   return roots;
+}
+
+/**
+ * Get org unit with location details (for branches)
+ * @param {object} db - Database connection
+ * @param {string} unitId - Org unit ID
+ * @returns {object} Org unit with locations array
+ */
+export async function getOrgUnitWithLocations(db, unitId) {
+  const unit = await getOrgUnitById(db, unitId);
+
+  if (unit.type === 'branch') {
+    // Fetch locations for this branch
+    const locationsResult = await db
+      .prepare(
+        `SELECT * FROM branch_locations
+         WHERE branch_id = ? AND is_active = 1
+         ORDER BY is_primary DESC, location_name ASC`
+      )
+      .bind(unitId)
+      .all();
+
+    unit.locations = locationsResult.results || [];
+    unit.location_count = unit.locations.length;
+  }
+
+  return unit;
 }

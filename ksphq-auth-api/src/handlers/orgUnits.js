@@ -68,7 +68,30 @@ export async function handleCreateOrgUnit(request, env, ctx, currentUser) {
     const body = await request.json();
     const validated = createOrgUnitSchema.parse(body);
 
-    const unit = await createOrgUnit(env.DB, validated, currentUser.id);
+    // Validate is_multi_branch permissions
+    // Only admins and branch admins (role_level >= 80) can create multi-branch departments
+    if (validated.is_multi_branch && currentUser.role_level < 80) {
+      return errorResponse(
+        'Insufficient permissions to create multi-branch departments',
+        403,
+        null,
+        env
+      );
+    }
+
+    const unit = await createOrgUnit(
+      env.DB,
+      {
+        type: validated.type,
+        name: validated.name,
+        code: validated.code,
+        parentId: validated.parent_id,
+        managerId: validated.manager_id,
+        isMultiBranch: validated.is_multi_branch,
+        metadata: validated.metadata,
+      },
+      currentUser.id
+    );
 
     return successResponse({ unit, message: 'Organizational unit created successfully' }, 201);
   } catch (error) {
@@ -94,7 +117,31 @@ export async function handleUpdateOrgUnit(request, env, ctx, currentUser, unitId
     const body = await request.json();
     const validated = updateOrgUnitSchema.parse(body);
 
-    const unit = await updateOrgUnit(env.DB, unitId, validated, currentUser.id);
+    // Validate is_multi_branch permissions
+    // Only admins and branch admins (role_level >= 80) can set multi-branch flag
+    if (validated.is_multi_branch !== undefined && currentUser.role_level < 80) {
+      return errorResponse(
+        'Insufficient permissions to modify multi-branch setting',
+        403,
+        null,
+        env
+      );
+    }
+
+    const unit = await updateOrgUnit(
+      env.DB,
+      unitId,
+      {
+        name: validated.name,
+        code: validated.code,
+        parentId: validated.parent_id,
+        managerId: validated.manager_id,
+        isMultiBranch: validated.is_multi_branch,
+        metadata: validated.metadata,
+        is_active: validated.is_active,
+      },
+      currentUser.id
+    );
 
     return successResponse({ unit, message: 'Organizational unit updated successfully' });
   } catch (error) {

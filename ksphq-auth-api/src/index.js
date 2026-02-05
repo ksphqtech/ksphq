@@ -39,6 +39,14 @@ import {
   getBranchUsers,
   getUserBranchAssignments,
 } from './handlers/userBranches.js';
+import {
+  handleListBranchLocations,
+  handleGetLocation,
+  handleCreateBranchLocation,
+  handleUpdateLocation,
+  handleDeleteLocation,
+  handleSetPrimaryLocation,
+} from './handlers/branchLocations.js';
 
 /**
  * Extract ID from pathname like /api/users/123abc
@@ -185,6 +193,37 @@ export default {
         const user = await requireAuth(request, env);
         const unitId = extractId(pathname, '/api/org-units/');
         response = await asyncHandler(handleDeleteOrgUnit)(request, env, null, user, unitId);
+      }
+      // Branch Location Routes
+      else if (pathname.match(/^\/api\/branches\/[^/]+\/locations$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const branchId = pathname.split('/')[3];
+        response = await asyncHandler(handleListBranchLocations)(request, env, null, user, branchId);
+      }
+      else if (pathname.match(/^\/api\/branches\/[^/]+\/locations$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const branchId = pathname.split('/')[3];
+        response = await asyncHandler(handleCreateBranchLocation)(request, env, null, user, branchId);
+      }
+      else if (pathname.match(/^\/api\/locations\/[^/]+\/set-primary$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const locationId = pathname.split('/')[3];
+        response = await asyncHandler(handleSetPrimaryLocation)(request, env, null, user, locationId);
+      }
+      else if (pathname.startsWith('/api/locations/') && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const locationId = extractId(pathname, '/api/locations/');
+        response = await asyncHandler(handleGetLocation)(request, env, null, user, locationId);
+      }
+      else if (pathname.startsWith('/api/locations/') && method === 'PATCH') {
+        const user = await requireAuth(request, env);
+        const locationId = extractId(pathname, '/api/locations/');
+        response = await asyncHandler(handleUpdateLocation)(request, env, null, user, locationId);
+      }
+      else if (pathname.startsWith('/api/locations/') && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const locationId = extractId(pathname, '/api/locations/');
+        response = await asyncHandler(handleDeleteLocation)(request, env, null, user, locationId);
       }
       // Branch Management Routes
       else if (pathname === '/api/user/branches' && method === 'GET') {

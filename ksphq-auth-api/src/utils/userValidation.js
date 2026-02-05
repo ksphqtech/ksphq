@@ -185,6 +185,24 @@ export const updateRoleSchema = z.object({
 });
 
 /**
+ * Branch metadata schema
+ */
+const branchMetadataSchema = z.object({
+  notes: z.string().max(5000).optional(),
+  contact_email: z.string().email().optional(),
+  contact_phone: z.string().optional(),
+}).optional().nullable();
+
+/**
+ * Department metadata schema
+ */
+const departmentMetadataSchema = z.object({
+  notes: z.string().max(5000).optional(),
+  contact_email: z.string().email().optional(),
+  contact_phone: z.string().optional(),
+}).optional().nullable();
+
+/**
  * Create org unit schema
  */
 export const createOrgUnitSchema = z.object({
@@ -194,6 +212,8 @@ export const createOrgUnitSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
   code: z.string().max(20).optional().nullable(),
   parent_id: z.string().optional().nullable(),
+  manager_id: z.string().optional().nullable(),
+  is_multi_branch: z.boolean().default(false),
   metadata: z.record(z.any()).optional().nullable(),
 });
 
@@ -204,6 +224,44 @@ export const updateOrgUnitSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   code: z.string().max(20).optional().nullable(),
   parent_id: z.string().optional().nullable(),
+  manager_id: z.string().optional().nullable(),
+  is_multi_branch: z.boolean().optional(),
   metadata: z.record(z.any()).optional().nullable(),
+  is_active: z.boolean().optional(),
+});
+
+/**
+ * Create branch location schema
+ */
+export const createLocationSchema = z.object({
+  branch_id: z.string().min(1, 'Branch ID required'),
+  location_name: z.string().min(1, 'Location name required').max(100),
+  address_line1: z.string().min(1, 'Address required').max(200),
+  address_line2: z.string().max(200).optional().nullable(),
+  city: z.string().min(1, 'City required').max(100),
+  state_province: z.string().max(100).optional().nullable(),
+  postal_code: z.string().max(20).optional().nullable(),
+  country: z.string().min(1, 'Country required').max(100),
+  is_primary: z.boolean().default(false),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  notes: z.string().max(1000).optional().nullable(),
+});
+
+/**
+ * Update branch location schema
+ */
+export const updateLocationSchema = z.object({
+  location_name: z.string().min(1).max(100).optional(),
+  address_line1: z.string().min(1).max(200).optional(),
+  address_line2: z.string().max(200).optional().nullable(),
+  city: z.string().min(1).max(100).optional(),
+  state_province: z.string().max(100).optional().nullable(),
+  postal_code: z.string().max(20).optional().nullable(),
+  country: z.string().min(1).max(100).optional(),
+  is_primary: z.boolean().optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  notes: z.string().max(1000).optional().nullable(),
   is_active: z.boolean().optional(),
 });

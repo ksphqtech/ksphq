@@ -141,6 +141,9 @@ export function OrgUnitsPage() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Code</TableHead>
+                          {(type.key === 'branch' || type.key === 'department') && (
+                            <TableHead>Manager/Head</TableHead>
+                          )}
                           <TableHead>Parent</TableHead>
                           <TableHead>Users</TableHead>
                           <TableHead>Status</TableHead>
@@ -151,13 +154,19 @@ export function OrgUnitsPage() {
                       <TableBody>
                         {isLoading ? (
                           <TableRow>
-                            <TableCell colSpan={isAdmin ? 7 : 6} className="text-center py-8">
+                            <TableCell
+                              colSpan={(type.key === 'branch' || type.key === 'department') ? (isAdmin ? 8 : 7) : (isAdmin ? 7 : 6)}
+                              className="text-center py-8"
+                            >
                               <div className="text-muted-foreground">Loading...</div>
                             </TableCell>
                           </TableRow>
                         ) : units.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={isAdmin ? 7 : 6} className="text-center py-8">
+                            <TableCell
+                              colSpan={(type.key === 'branch' || type.key === 'department') ? (isAdmin ? 8 : 7) : (isAdmin ? 7 : 6)}
+                              className="text-center py-8"
+                            >
                               <div className="text-muted-foreground">
                                 No {type.label.toLowerCase()} created yet
                               </div>
@@ -166,7 +175,16 @@ export function OrgUnitsPage() {
                         ) : (
                           units.map((unit) => (
                             <TableRow key={unit.id}>
-                              <TableCell className="font-medium">{unit.name}</TableCell>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  {unit.name}
+                                  {type.key === 'department' && unit.is_multi_branch && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Org-wide
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
                               <TableCell>
                                 {unit.code ? (
                                   <Badge variant="outline">{unit.code}</Badge>
@@ -174,9 +192,34 @@ export function OrgUnitsPage() {
                                   <span className="text-sm text-muted-foreground">-</span>
                                 )}
                               </TableCell>
+                              {(type.key === 'branch' || type.key === 'department') && (
+                                <TableCell>
+                                  {unit.manager_name ? (
+                                    <div className="space-y-0.5">
+                                      <div className="text-sm font-medium">{unit.manager_name}</div>
+                                      {unit.manager_email && (
+                                        <div className="text-xs text-muted-foreground">{unit.manager_email}</div>
+                                      )}
+                                    </div>
+                                  ) : type.key === 'department' && unit.metadata?.contact_email ? (
+                                    <div className="space-y-0.5">
+                                      <div className="text-xs text-muted-foreground">
+                                        {unit.metadata.contact_email}
+                                      </div>
+                                      {unit.metadata?.contact_phone && (
+                                        <div className="text-xs text-muted-foreground">
+                                          {unit.metadata.contact_phone}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">None</span>
+                                  )}
+                                </TableCell>
+                              )}
                               <TableCell>
                                 <span className="text-sm">
-                                  {unit.parent_name || 'None'}
+                                  {unit.parent_name || (type.key === 'department' && unit.is_multi_branch ? 'Organization' : 'None')}
                                 </span>
                               </TableCell>
                               <TableCell>

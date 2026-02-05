@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { AlertCircle } from 'lucide-react';
 import { BranchMultiSelect } from '@/components/branches/BranchMultiSelect';
 
@@ -177,7 +178,15 @@ export function WorkDetailsFields({
               <SelectItem value="none">None</SelectItem>
               {Array.isArray(departments) && departments.map(dept => (
                 <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
+                  <div className="flex items-center gap-2">
+                    <span>{dept.name}</span>
+                    {dept.is_multi_branch && (
+                      <Badge variant="secondary" className="text-xs">Org-wide</Badge>
+                    )}
+                    {!dept.is_multi_branch && dept.parent_name && (
+                      <span className="text-muted-foreground text-xs">({dept.parent_name})</span>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>

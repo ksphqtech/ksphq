@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, MoreVertical, Users, Edit2 } from 'lucide-react';
+import { Plus, MoreVertical, Users, Edit2, MapPin } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { orgUnitApi } from '@/lib/orgUnitApi';
 import { branchApi } from '@/lib/branchApi';
@@ -117,6 +117,8 @@ export function BranchManagementPage() {
               <TableRow>
                 <TableHead>Branch Name</TableHead>
                 <TableHead>Code</TableHead>
+                <TableHead>Manager</TableHead>
+                <TableHead>Locations</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
@@ -125,7 +127,7 @@ export function BranchManagementPage() {
             <TableBody>
               {branches.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No branches found. Create your first branch to get started.
                   </TableCell>
                 </TableRow>
@@ -134,6 +136,19 @@ export function BranchManagementPage() {
                   <TableRow key={branch.id}>
                     <TableCell className="font-medium">{branch.name}</TableCell>
                     <TableCell>{branch.code}</TableCell>
+                    <TableCell>
+                      {branch.manager_name ? (
+                        <span className="text-sm">{branch.manager_name}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No manager</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{branch.location_count || 0}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
