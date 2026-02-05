@@ -43,8 +43,8 @@ export function EditUserDialog({ user, open, onOpenChange }) {
   const shifts = units.filter(u => u.type === 'shift');
   const teams = units.filter(u => u.type === 'team');
   const groups = units.filter(u => u.type === 'group');
-  const roles = rolesData?.roles || [];
-  const users = usersData?.users || [];
+  const roles = Array.isArray(rolesData?.roles) ? rolesData.roles : [];
+  const users = Array.isArray(usersData?.users) ? usersData.users : [];
 
   // Initialize form data when full user details are loaded
   useEffect(() => {

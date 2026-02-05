@@ -33,7 +33,9 @@ export function DeletedUsersPanel({ open, onOpenChange }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [reactivatingUser, setReactivatingUser] = useState(null);
 
-  const deletedUsers = deletedUsersData?.users || [];
+  const deletedUsers = Array.isArray(deletedUsersData?.users)
+    ? deletedUsersData.users
+    : [];
 
   const filteredUsers = deletedUsers.filter(user => {
     if (!searchQuery) return true;

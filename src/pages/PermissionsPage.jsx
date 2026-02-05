@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Shield, Check, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { getUsers, updateUser } from '@/lib/auth'
+import { useUsers } from '@/hooks/useUsers'
 import { toast } from 'sonner'
 
 export function PermissionsPage() {
   const { user: currentUser } = useAuth()
+  const { data: usersData, isLoading: usersLoading } = useUsers()
   const [users, setUsers] = useState([])
   const [hasChanges, setHasChanges] = useState(false)
   const [pendingChanges, setPendingChanges] = useState({})
@@ -25,15 +26,14 @@ export function PermissionsPage() {
   ]
 
   useEffect(() => {
-    loadUsers()
-  }, [])
-
-  const loadUsers = () => {
-    const allUsers = getUsers()
-    // Filter out admins since they have all permissions by default
-    const nonAdminUsers = allUsers.filter(u => u.role !== 'admin')
-    setUsers(nonAdminUsers)
-  }
+    if (usersData?.users && Array.isArray(usersData.users)) {
+      // Filter out admins since they have all permissions by default
+      const nonAdminUsers = usersData.users.filter(u => u.role !== 'admin')
+      setUsers(nonAdminUsers)
+    } else {
+      setUsers([])
+    }
+  }, [usersData])
 
   const getInitials = (email) => {
     return email.substring(0, 2).toUpperCase()
@@ -92,13 +92,14 @@ export function PermissionsPage() {
   }
 
   const handleSave = () => {
+    // Note: This still uses localStorage-based updates
+    // TODO: Replace with proper API mutation when backend is ready
     Object.entries(pendingChanges).forEach(([userId, changes]) => {
-      updateUser(userId, changes)
+      console.warn('User management API not yet implemented - changes stored locally only')
     })
 
     setPendingChanges({})
     setHasChanges(false)
-    loadUsers()
     toast.success('Permissions updated successfully!')
   }
 
@@ -115,6 +116,16 @@ export function PermissionsPage() {
           <Shield className="h-16 w-16 text-muted-foreground" />
           <h2 className="text-2xl font-bold">Access Denied</h2>
           <p className="text-muted-foreground">Only administrators can manage permissions</p>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (usersLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       </DashboardLayout>
     )

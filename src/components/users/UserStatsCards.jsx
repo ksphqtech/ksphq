@@ -12,8 +12,8 @@ export function UserStatsCards({ onDeletedClick }) {
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: rolesData } = useRoles();
 
-  const users = usersData?.users || [];
-  const roles = rolesData?.roles || [];
+  const users = Array.isArray(usersData?.users) ? usersData.users : [];
+  const roles = Array.isArray(rolesData?.roles) ? rolesData.roles : [];
 
   // Calculate stats
   const activeUsers = users.filter(u => u.is_active && !u.deleted_at).length;

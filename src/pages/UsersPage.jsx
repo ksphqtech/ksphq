@@ -46,7 +46,7 @@ export function UsersPage() {
   const [showDeletedPanel, setShowDeletedPanel] = useState(false);
 
   const { data, isLoading, error } = useUsers(filters);
-  const users = data?.users || [];
+  const users = Array.isArray(data?.users) ? data.users : [];
   const pagination = data?.pagination || {};
 
   // Check user permissions

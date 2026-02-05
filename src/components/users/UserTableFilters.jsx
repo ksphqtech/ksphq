@@ -15,7 +15,7 @@ export function UserTableFilters({ filters, onFiltersChange }) {
   const { data: rolesData } = useRoles();
   const { data: orgUnitsData } = useOrgUnits();
 
-  const roles = rolesData?.roles || [];
+  const roles = Array.isArray(rolesData?.roles) ? rolesData.roles : [];
   const units = Array.isArray(orgUnitsData?.units) ? orgUnitsData.units : [];
   const branches = units.filter(u => u.type === 'branch');
   const departments = units.filter(u => u.type === 'department');

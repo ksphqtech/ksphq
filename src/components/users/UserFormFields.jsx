@@ -124,9 +124,9 @@ export function WorkDetailsFields({
   onBranchSelectionChange,
 }) {
   // Filter out current user from manager list to prevent self-assignment
-  const managerOptions = users.filter(u =>
-    u.id !== formData.id && !u.deleted_at
-  );
+  const managerOptions = Array.isArray(users)
+    ? users.filter(u => u.id !== formData.id && !u.deleted_at)
+    : [];
 
   return (
     <div className="space-y-4">
@@ -154,7 +154,7 @@ export function WorkDetailsFields({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
-              {branches.map(branch => (
+              {Array.isArray(branches) && branches.map(branch => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
                 </SelectItem>
@@ -175,7 +175,7 @@ export function WorkDetailsFields({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
-              {departments.map(dept => (
+              {Array.isArray(departments) && departments.map(dept => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.name}
                 </SelectItem>
@@ -212,7 +212,7 @@ export function WorkDetailsFields({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
-              {shifts.map(shift => (
+              {Array.isArray(shifts) && shifts.map(shift => (
                 <SelectItem key={shift.id} value={shift.id}>
                   {shift.name}
                 </SelectItem>
@@ -233,7 +233,7 @@ export function WorkDetailsFields({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
-              {teams.map(team => (
+              {Array.isArray(teams) && teams.map(team => (
                 <SelectItem key={team.id} value={team.id}>
                   {team.name}
                 </SelectItem>
@@ -255,7 +255,7 @@ export function WorkDetailsFields({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">None</SelectItem>
-            {groups.map(group => (
+            {Array.isArray(groups) && groups.map(group => (
               <SelectItem key={group.id} value={group.id}>
                 {group.name}
               </SelectItem>
@@ -276,7 +276,7 @@ export function WorkDetailsFields({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">None</SelectItem>
-            {managerOptions.map(user => (
+            {Array.isArray(managerOptions) && managerOptions.map(user => (
               <SelectItem key={user.id} value={user.id}>
                 {user.first_name && user.last_name
                   ? `${user.first_name} ${user.last_name} (${user.email})`
@@ -318,7 +318,7 @@ export function AccountSettingsFields({
             <SelectValue placeholder="Select role" />
           </SelectTrigger>
           <SelectContent>
-            {roles.map(role => (
+            {Array.isArray(roles) && roles.map(role => (
               <SelectItem key={role.id} value={role.id}>
                 {role.name} (Level {role.level})
               </SelectItem>
