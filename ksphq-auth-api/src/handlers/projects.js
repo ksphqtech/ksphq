@@ -307,6 +307,49 @@ export async function handleAddProjectMember(request, env, ctx, currentUser, pro
 }
 
 /**
+ * List project members
+ * GET /api/projects/:id/members
+ */
+export async function handleListProjectMembers(request, env, ctx, currentUser, projectId) {
+  try {
+    // Check project permissions
+    requireProjectPermission(currentUser, 'view');
+
+    // Get project to verify access
+    const project = await getProjectById(env.DB, projectId);
+    canAccessProject(currentUser, project);
+
+    // Get project members
+    const membersQuery = `
+      SELECT
+        pm.id,
+        pm.user_id,
+        pm.role,
+        pm.added_at,
+        u.first_name || ' ' || u.last_name as user_name,
+        u.email as user_email,
+        u.branch_id,
+        u.department_id,
+        u.team_id
+      FROM project_members pm
+      LEFT JOIN users u ON pm.user_id = u.id
+      WHERE pm.project_id = ?
+      ORDER BY pm.added_at ASC
+    `;
+    const membersResult = await env.DB.prepare(membersQuery).bind(projectId).all();
+    const members = membersResult.results || [];
+
+    return successResponse({ members });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error.message, error.statusCode, error.details, env);
+    }
+    console.error('List project members error:', error);
+    return errorResponse('Failed to list project members', 500, null, env);
+  }
+}
+
+/**
  * Remove project member
  * DELETE /api/projects/:id/members/:userId
  */

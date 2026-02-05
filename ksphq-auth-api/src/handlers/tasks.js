@@ -304,6 +304,84 @@ export async function handleDeleteTask(request, env, ctx, currentUser, taskId) {
 }
 
 /**
+ * List dependencies for a task
+ * GET /api/tasks/:taskId/dependencies
+ */
+export async function handleListDependencies(request, env, ctx, currentUser, taskId) {
+  try {
+    // Check project permissions
+    requireProjectPermission(currentUser, 'view');
+
+    // Get task to verify access
+    const task = await getTaskById(env.DB, taskId);
+
+    // Verify project access
+    const project = await getProjectById(env.DB, task.project_id);
+    canAccessProject(currentUser, project);
+
+    // Get predecessors (tasks that must be completed before this one)
+    const predecessorsQuery = `
+      SELECT
+        td.id as dependency_id,
+        td.type as dependency_type,
+        td.created_at,
+        t.id,
+        t.name,
+        t.status,
+        t.priority,
+        t.start_date,
+        t.due_date,
+        t.completion_date,
+        t.assigned_to,
+        u.first_name || ' ' || u.last_name as assigned_to_name
+      FROM task_dependencies td
+      JOIN tasks t ON td.predecessor_id = t.id
+      LEFT JOIN users u ON t.assigned_to = u.id
+      WHERE td.successor_id = ? AND t.deleted_at IS NULL
+      ORDER BY t.start_date ASC
+    `;
+    const predecessorsResult = await env.DB.prepare(predecessorsQuery).bind(taskId).all();
+    const predecessors = predecessorsResult.results || [];
+
+    // Get successors (tasks that depend on this one)
+    const successorsQuery = `
+      SELECT
+        td.id as dependency_id,
+        td.type as dependency_type,
+        td.created_at,
+        t.id,
+        t.name,
+        t.status,
+        t.priority,
+        t.start_date,
+        t.due_date,
+        t.assigned_to,
+        u.first_name || ' ' || u.last_name as assigned_to_name
+      FROM task_dependencies td
+      JOIN tasks t ON td.successor_id = t.id
+      LEFT JOIN users u ON t.assigned_to = u.id
+      WHERE td.predecessor_id = ? AND t.deleted_at IS NULL
+      ORDER BY t.start_date ASC
+    `;
+    const successorsResult = await env.DB.prepare(successorsQuery).bind(taskId).all();
+    const successors = successorsResult.results || [];
+
+    return successResponse({
+      dependencies: {
+        predecessors,
+        successors,
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error.message, error.statusCode, error.details, env);
+    }
+    console.error('List dependencies error:', error);
+    return errorResponse('Failed to list task dependencies', 500, null, env);
+  }
+}
+
+/**
  * Add task dependency
  * POST /api/tasks/:taskId/dependencies
  */

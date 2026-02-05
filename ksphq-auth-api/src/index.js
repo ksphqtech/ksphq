@@ -53,6 +53,7 @@ import {
   handleGetProject,
   handleUpdateProject,
   handleDeleteProject,
+  handleListProjectMembers,
   handleAddProjectMember,
   handleRemoveProjectMember,
 } from './handlers/projects.js';
@@ -61,6 +62,7 @@ import {
   handleCreateTask,
   handleUpdateTask,
   handleDeleteTask,
+  handleListDependencies,
   handleAddDependency,
   handleRemoveDependency,
 } from './handlers/tasks.js';
