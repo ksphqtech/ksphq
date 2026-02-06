@@ -153,8 +153,8 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
       b.name as branch_name,
       pm.first_name || ' ' || pm.last_name as project_manager_name,
       creator.first_name || ' ' || creator.last_name as created_by_name,
-      (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND is_active = 1) as task_count,
-      (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status = 'completed' AND is_active = 1) as completed_task_count
+      (SELECT COUNT(*) FROM project_tasks WHERE project_id = p.id AND is_active = 1) as task_count,
+      (SELECT COUNT(*) FROM project_tasks WHERE project_id = p.id AND status = 'completed' AND is_active = 1) as completed_task_count
     ${baseQuery}
     ORDER BY p.${orderBy} ${order}
     LIMIT ? OFFSET ?
@@ -481,7 +481,7 @@ export async function deleteProject(db, projectId, userId) {
   // Check if project has active tasks
   const activeTasks = await db
     .prepare(
-      `SELECT COUNT(*) as count FROM tasks
+      `SELECT COUNT(*) as count FROM project_tasks
        WHERE project_id = ? AND status != 'completed' AND is_active = 1`
     )
     .bind(projectId)
