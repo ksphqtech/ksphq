@@ -195,30 +195,32 @@ export const NAVIGATION_CONFIG = {
           path: '/tools/projects',
           icon: 'FolderKanban',
         },
-        {
-          id: 'timeline',
-          title: 'Timeline',
-          path: '/tools/projects/timeline',
-          icon: 'Calendar',
-        },
-        {
-          id: 'reports',
-          title: 'Reports',
-          path: '/tools/projects/reports',
-          icon: 'BarChart3',
-        },
-        {
-          id: 'team',
-          title: 'Team',
-          path: '/tools/projects/team',
-          icon: 'Users',
-        },
-        {
-          id: 'settings',
-          title: 'Settings',
-          path: '/tools/projects/settings',
-          icon: 'Settings',
-        },
+        // Note: Timeline, Reports, Team, and Settings pages are not yet implemented
+        // Uncomment when these features are added:
+        // {
+        //   id: 'timeline',
+        //   title: 'Timeline',
+        //   path: '/tools/projects/timeline',
+        //   icon: 'Calendar',
+        // },
+        // {
+        //   id: 'reports',
+        //   title: 'Reports',
+        //   path: '/tools/projects/reports',
+        //   icon: 'BarChart3',
+        // },
+        // {
+        //   id: 'team',
+        //   title: 'Team',
+        //   path: '/tools/projects/team',
+        //   icon: 'Users',
+        // },
+        // {
+        //   id: 'settings',
+        //   title: 'Settings',
+        //   path: '/tools/projects/settings',
+        //   icon: 'Settings',
+        // },
       ],
     },
     tickets: {
