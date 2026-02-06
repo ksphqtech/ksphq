@@ -14,6 +14,10 @@ import {
   addDependency,
   removeDependency,
   getProjectDependencies,
+  listChecklistItems,
+  createChecklistItem,
+  updateChecklistItem,
+  deleteChecklistItem,
 } from '../db/taskQueries.js';
 import { getProjectById } from '../db/projectQueries.js';
 import {
@@ -500,5 +504,95 @@ export async function handleGetProjectDependencies(request, env, ctx, currentUse
     }
     console.error('Get project dependencies error:', error);
     return errorResponse('Failed to get project dependencies', 500, null, env);
+  }
+}
+
+/**
+ * List checklist items for a task
+ * GET /api/tasks/:taskId/checklist
+ */
+export async function handleListChecklistItems(request, env, ctx, currentUser, taskId) {
+  try {
+    const items = await listChecklistItems(env.DB, taskId);
+    return successResponse({ items });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error.message, error.statusCode, error.details, env);
+    }
+    console.error('List checklist items error:', error);
+    return errorResponse('Failed to list checklist items', 500, null, env);
+  }
+}
+
+/**
+ * Create a checklist item
+ * POST /api/tasks/:taskId/checklist
+ */
+export async function handleCreateChecklistItem(request, env, ctx, currentUser, taskId) {
+  try {
+    const body = await request.json();
+
+    if (!body.title) {
+      return errorResponse('Missing required field: title', 400, null, env);
+    }
+
+    const item = await createChecklistItem(env.DB, taskId, body, currentUser.id);
+
+    return successResponse(
+      {
+        item,
+        message: 'Checklist item created successfully',
+      },
+      201
+    );
+  } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error.message, error.statusCode, error.details, env);
+    }
+    console.error('Create checklist item error:', error);
+    return errorResponse('Failed to create checklist item', 500, null, env);
+  }
+}
+
+/**
+ * Update a checklist item (toggle completion, rename, reorder)
+ * PATCH /api/tasks/:taskId/checklist/:itemId
+ */
+export async function handleUpdateChecklistItem(request, env, ctx, currentUser, taskId, itemId) {
+  try {
+    const body = await request.json();
+
+    const updated = await updateChecklistItem(env.DB, itemId, body, currentUser.id);
+
+    return successResponse({
+      item: updated,
+      message: 'Checklist item updated successfully',
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error.message, error.statusCode, error.details, env);
+    }
+    console.error('Update checklist item error:', error);
+    return errorResponse('Failed to update checklist item', 500, null, env);
+  }
+}
+
+/**
+ * Delete a checklist item
+ * DELETE /api/tasks/:taskId/checklist/:itemId
+ */
+export async function handleDeleteChecklistItem(request, env, ctx, currentUser, taskId, itemId) {
+  try {
+    await deleteChecklistItem(env.DB, itemId);
+
+    return successResponse({
+      message: 'Checklist item deleted successfully',
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error.message, error.statusCode, error.details, env);
+    }
+    console.error('Delete checklist item error:', error);
+    return errorResponse('Failed to delete checklist item', 500, null, env);
   }
 }

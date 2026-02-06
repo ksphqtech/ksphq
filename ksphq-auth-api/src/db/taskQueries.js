@@ -27,9 +27,9 @@ export async function listTasks(db, projectId, filters = {}) {
       t.*,
       u.first_name || ' ' || u.last_name as assigned_to_name,
       creator.first_name || ' ' || creator.last_name as created_by_name,
-      (SELECT COUNT(*) FROM task_dependencies WHERE successor_id = t.id) as predecessor_count,
-      (SELECT COUNT(*) FROM task_dependencies WHERE predecessor_id = t.id) as successor_count
-    FROM tasks t
+      (SELECT COUNT(*) FROM task_dependencies WHERE task_id = t.id) as predecessor_count,
+      (SELECT COUNT(*) FROM task_dependencies WHERE depends_on_task_id = t.id) as successor_count
+    FROM project_tasks t
     LEFT JOIN users u ON t.assigned_to = u.id
     LEFT JOIN users creator ON t.created_by = creator.id
     WHERE t.project_id = ?
@@ -53,12 +53,12 @@ export async function listTasks(db, projectId, filters = {}) {
   }
 
   if (!include_deleted) {
-    query += ' AND t.deleted_at IS NULL';
+    query += ' AND t.is_active = 1';
   }
 
   // Parse sorting
   const [sortField, sortOrder] = sort.split(':');
-  const validSortFields = ['created_at', 'updated_at', 'name', 'start_date', 'due_date', 'priority', 'status'];
+  const validSortFields = ['created_at', 'updated_at', 'title', 'start_date', 'due_date', 'priority', 'status'];
   const orderBy = validSortFields.includes(sortField) ? sortField : 'created_at';
   const order = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
@@ -82,11 +82,11 @@ export async function getTaskById(db, taskId) {
       u.email as assigned_to_email,
       creator.first_name || ' ' || creator.last_name as created_by_name,
       updater.first_name || ' ' || updater.last_name as updated_by_name
-    FROM tasks t
+    FROM project_tasks t
     LEFT JOIN users u ON t.assigned_to = u.id
     LEFT JOIN users creator ON t.created_by = creator.id
     LEFT JOIN users updater ON t.updated_by = updater.id
-    WHERE t.id = ? AND t.deleted_at IS NULL
+    WHERE t.id = ? AND t.is_active = 1
   `;
 
   const task = await db.prepare(query).bind(taskId).first();
@@ -95,38 +95,38 @@ export async function getTaskById(db, taskId) {
     throw new NotFoundError('Task');
   }
 
-  // Get predecessors (tasks that must be completed before this one)
+  // Get predecessors (tasks that this task depends on - must be completed before this one)
   const predecessorsQuery = `
     SELECT
       td.id as dependency_id,
-      td.type as dependency_type,
+      td.dependency_type,
       t.id,
-      t.name,
+      t.title,
       t.status,
       t.start_date,
       t.due_date,
-      t.completion_date
+      t.completed_at
     FROM task_dependencies td
-    JOIN tasks t ON td.predecessor_id = t.id
-    WHERE td.successor_id = ? AND t.deleted_at IS NULL
+    JOIN project_tasks t ON td.depends_on_task_id = t.id
+    WHERE td.task_id = ? AND t.is_active = 1
     ORDER BY t.start_date ASC
   `;
   const predecessorsResult = await db.prepare(predecessorsQuery).bind(taskId).all();
   task.predecessors = predecessorsResult.results || [];
 
-  // Get successors (tasks that depend on this one)
+  // Get successors (tasks that depend on this task)
   const successorsQuery = `
     SELECT
       td.id as dependency_id,
-      td.type as dependency_type,
+      td.dependency_type,
       t.id,
-      t.name,
+      t.title,
       t.status,
       t.start_date,
       t.due_date
     FROM task_dependencies td
-    JOIN tasks t ON td.successor_id = t.id
-    WHERE td.predecessor_id = ? AND t.deleted_at IS NULL
+    JOIN project_tasks t ON td.task_id = t.id
+    WHERE td.depends_on_task_id = ? AND t.is_active = 1
     ORDER BY t.start_date ASC
   `;
   const successorsResult = await db.prepare(successorsQuery).bind(taskId).all();
@@ -153,9 +153,9 @@ export async function getTaskById(db, taskId) {
  */
 export async function createTask(db, projectId, data) {
   const {
-    name,
+    title,
     description = null,
-    status = 'todo',
+    status = 'planning',
     priority = 'medium',
     start_date = null,
     due_date = null,
@@ -167,7 +167,7 @@ export async function createTask(db, projectId, data) {
 
   // Validate project exists
   const project = await db
-    .prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL')
+    .prepare('SELECT id FROM projects WHERE id = ? AND is_active = 1')
     .bind(projectId)
     .first();
 
@@ -183,7 +183,7 @@ export async function createTask(db, projectId, data) {
   // Validate assigned user if provided
   if (assigned_to) {
     const user = await db
-      .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL')
+      .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1')
       .bind(assigned_to)
       .first();
 
@@ -195,16 +195,16 @@ export async function createTask(db, projectId, data) {
   // Create task
   const result = await db
     .prepare(
-      `INSERT INTO tasks (
-        project_id, name, description, status, priority,
+      `INSERT INTO project_tasks (
+        project_id, title, description, status, priority,
         start_date, due_date, estimated_hours, actual_hours,
-        assigned_to, custom_fields, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
-      RETURNING id, project_id, name, status, priority, created_at`
+        assigned_to, custom_fields, created_by, updated_by, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 1)
+      RETURNING id, project_id, title, status, priority, created_at`
     )
     .bind(
       projectId,
-      name,
+      title,
       description,
       status,
       priority,
@@ -222,7 +222,7 @@ export async function createTask(db, projectId, data) {
   await createAuditLog(db, {
     userId: created_by,
     action: 'task_created',
-    details: `Created task ${name} in project`,
+    details: `Created task ${title} in project`,
     category: 'project_management',
     severity: 'info',
   });
@@ -244,9 +244,9 @@ export async function updateTask(db, taskId, updates) {
   const fields = [];
   const values = [];
 
-  if (updates.name !== undefined) {
-    fields.push('name = ?');
-    values.push(updates.name);
+  if (updates.title !== undefined) {
+    fields.push('title = ?');
+    values.push(updates.title);
   }
 
   if (updates.description !== undefined) {
@@ -256,18 +256,18 @@ export async function updateTask(db, taskId, updates) {
 
   if (updates.status !== undefined) {
     // Validate status
-    const validStatuses = ['todo', 'in_progress', 'on_hold', 'completed', 'cancelled'];
+    const validStatuses = ['planning', 'in progress', 'on hold', 'completed', 'cancelled'];
     if (!validStatuses.includes(updates.status)) {
       throw new AppError('Invalid task status', 400);
     }
 
-    // If marking as completed, set completion_date
+    // If marking as completed, set completed_at
     if (updates.status === 'completed' && before.status !== 'completed') {
-      fields.push("completion_date = datetime('now')");
+      fields.push("completed_at = datetime('now')");
     }
-    // If unmarking as completed, clear completion_date
+    // If unmarking as completed, clear completed_at
     if (updates.status !== 'completed' && before.status === 'completed') {
-      fields.push('completion_date = NULL');
+      fields.push('completed_at = NULL');
     }
 
     fields.push('status = ?');
@@ -276,7 +276,7 @@ export async function updateTask(db, taskId, updates) {
 
   if (updates.priority !== undefined) {
     // Validate priority
-    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    const validPriorities = ['low', 'medium', 'high', 'urgent'];
     if (!validPriorities.includes(updates.priority)) {
       throw new AppError('Invalid task priority', 400);
     }
@@ -313,7 +313,7 @@ export async function updateTask(db, taskId, updates) {
     // Validate assigned user if provided
     if (updates.assigned_to) {
       const user = await db
-        .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL')
+        .prepare('SELECT id FROM users WHERE id = ? AND is_active = 1')
         .bind(updates.assigned_to)
         .first();
 
@@ -342,9 +342,9 @@ export async function updateTask(db, taskId, updates) {
 
   await db
     .prepare(
-      `UPDATE tasks
+      `UPDATE project_tasks
        SET ${fields.join(', ')}
-       WHERE id = ? AND deleted_at IS NULL`
+       WHERE id = ? AND is_active = 1`
     )
     .bind(...values)
     .run();
@@ -360,7 +360,7 @@ export async function updateTask(db, taskId, updates) {
     userId: updates.updated_by,
     action: 'task_updated',
     changes,
-    details: `Updated task ${after.name}`,
+    details: `Updated task ${after.title}`,
     category: 'project_management',
     severity: 'info',
   });
@@ -380,7 +380,7 @@ export async function deleteTask(db, taskId) {
   await db
     .prepare(
       `DELETE FROM task_dependencies
-       WHERE predecessor_id = ? OR successor_id = ?`
+       WHERE depends_on_task_id = ? OR task_id = ?`
     )
     .bind(taskId, taskId)
     .run();
@@ -388,8 +388,9 @@ export async function deleteTask(db, taskId) {
   // Soft delete
   await db
     .prepare(
-      `UPDATE tasks SET
-        deleted_at = datetime('now')
+      `UPDATE project_tasks SET
+        is_active = 0,
+        updated_at = datetime('now')
        WHERE id = ?`
     )
     .bind(taskId)
@@ -399,7 +400,7 @@ export async function deleteTask(db, taskId) {
   await createAuditLog(db, {
     userId: task.created_by,
     action: 'task_deleted',
-    details: `Deleted task ${task.name}`,
+    details: `Deleted task ${task.title}`,
     category: 'project_management',
     severity: 'warning',
   });
@@ -426,16 +427,16 @@ async function detectCycle(db, startTaskId, targetTaskId, visited = new Set()) {
 
   // Get all successors of current task
   const successorsQuery = `
-    SELECT successor_id
+    SELECT task_id
     FROM task_dependencies
-    WHERE predecessor_id = ?
+    WHERE depends_on_task_id = ?
   `;
   const result = await db.prepare(successorsQuery).bind(startTaskId).all();
   const successors = result.results || [];
 
   // Check each successor recursively
   for (const successor of successors) {
-    const cycleFound = await detectCycle(db, successor.successor_id, targetTaskId, visited);
+    const cycleFound = await detectCycle(db, successor.task_id, targetTaskId, visited);
     if (cycleFound) {
       return true;
     }
@@ -447,40 +448,41 @@ async function detectCycle(db, startTaskId, targetTaskId, visited = new Set()) {
 /**
  * Add task dependency with cycle detection
  * @param {object} db - Database connection
- * @param {string} predecessorId - Predecessor task ID (must be completed first)
- * @param {string} successorId - Successor task ID (depends on predecessor)
- * @param {string} type - Dependency type (finish_to_start, start_to_start, finish_to_finish, start_to_finish)
+ * @param {string} taskId - Task ID that depends on another (successor)
+ * @param {string} dependsOnTaskId - Task ID that must be completed first (predecessor)
+ * @param {string} dependencyType - Dependency type (finish_to_start, start_to_start, finish_to_finish, start_to_finish)
+ * @param {string} userId - User creating the dependency
  * @returns {object} Created dependency
  */
-export async function addDependency(db, predecessorId, successorId, type = 'finish_to_start') {
+export async function addDependency(db, taskId, dependsOnTaskId, dependencyType = 'finish_to_start', userId) {
   // Validate both tasks exist and are in the same project
-  const predecessorQuery = `
-    SELECT id, project_id, name FROM tasks
-    WHERE id = ? AND deleted_at IS NULL
+  const taskQuery = `
+    SELECT id, project_id, title FROM project_tasks
+    WHERE id = ? AND is_active = 1
   `;
-  const predecessor = await db.prepare(predecessorQuery).bind(predecessorId).first();
+  const task = await db.prepare(taskQuery).bind(taskId).first();
 
-  if (!predecessor) {
-    throw new NotFoundError('Predecessor task');
+  if (!task) {
+    throw new NotFoundError('Task');
   }
 
-  const successorQuery = `
-    SELECT id, project_id, name FROM tasks
-    WHERE id = ? AND deleted_at IS NULL
+  const dependsOnQuery = `
+    SELECT id, project_id, title FROM project_tasks
+    WHERE id = ? AND is_active = 1
   `;
-  const successor = await db.prepare(successorQuery).bind(successorId).first();
+  const dependsOnTask = await db.prepare(dependsOnQuery).bind(dependsOnTaskId).first();
 
-  if (!successor) {
-    throw new NotFoundError('Successor task');
+  if (!dependsOnTask) {
+    throw new NotFoundError('Depends on task');
   }
 
   // Ensure tasks are in the same project
-  if (predecessor.project_id !== successor.project_id) {
+  if (task.project_id !== dependsOnTask.project_id) {
     throw new AppError('Tasks must be in the same project', 400);
   }
 
   // Cannot depend on itself
-  if (predecessorId === successorId) {
+  if (taskId === dependsOnTaskId) {
     throw new AppError('Task cannot depend on itself', 400);
   }
 
@@ -488,9 +490,9 @@ export async function addDependency(db, predecessorId, successorId, type = 'fini
   const existing = await db
     .prepare(
       `SELECT id FROM task_dependencies
-       WHERE predecessor_id = ? AND successor_id = ?`
+       WHERE task_id = ? AND depends_on_task_id = ?`
     )
-    .bind(predecessorId, successorId)
+    .bind(taskId, dependsOnTaskId)
     .first();
 
   if (existing) {
@@ -498,8 +500,8 @@ export async function addDependency(db, predecessorId, successorId, type = 'fini
   }
 
   // Check for circular dependencies
-  // If we add predecessor -> successor, we need to ensure successor doesn't lead back to predecessor
-  const cycleDetected = await detectCycle(db, successorId, predecessorId);
+  // If we add task depends on dependsOnTask, we need to ensure dependsOnTask doesn't lead back to task
+  const cycleDetected = await detectCycle(db, dependsOnTaskId, taskId);
 
   if (cycleDetected) {
     throw new AppError('Cannot add dependency: would create circular dependency', 400);
@@ -507,25 +509,25 @@ export async function addDependency(db, predecessorId, successorId, type = 'fini
 
   // Validate dependency type
   const validTypes = ['finish_to_start', 'start_to_start', 'finish_to_finish', 'start_to_finish'];
-  if (!validTypes.includes(type)) {
+  if (!validTypes.includes(dependencyType)) {
     throw new AppError('Invalid dependency type', 400);
   }
 
   // Create dependency
   const result = await db
     .prepare(
-      `INSERT INTO task_dependencies (predecessor_id, successor_id, type)
-       VALUES (?, ?, ?)
-       RETURNING id, predecessor_id, successor_id, type, created_at`
+      `INSERT INTO task_dependencies (task_id, depends_on_task_id, dependency_type, created_by)
+       VALUES (?, ?, ?, ?)
+       RETURNING id, task_id, depends_on_task_id, dependency_type, created_at`
     )
-    .bind(predecessorId, successorId, type)
+    .bind(taskId, dependsOnTaskId, dependencyType, userId)
     .first();
 
   // Create audit log
   await createAuditLog(db, {
-    userId: null,
+    userId,
     action: 'task_dependency_created',
-    details: `Added dependency: ${predecessor.name} -> ${successor.name} (${type})`,
+    details: `Added dependency: ${task.title} depends on ${dependsOnTask.title} (${dependencyType})`,
     category: 'project_management',
     severity: 'info',
   });
@@ -538,17 +540,17 @@ export async function addDependency(db, predecessorId, successorId, type = 'fini
  * @param {object} db - Database connection
  * @param {string} dependencyId - Dependency ID to remove
  */
-export async function removeDependency(db, dependencyId) {
+export async function removeDependency(db, dependencyId, userId) {
   // Get dependency details for audit log
   const dependency = await db
     .prepare(
       `SELECT
         td.*,
-        p.name as predecessor_name,
-        s.name as successor_name
+        dt.title as depends_on_task_title,
+        t.title as task_title
        FROM task_dependencies td
-       JOIN tasks p ON td.predecessor_id = p.id
-       JOIN tasks s ON td.successor_id = s.id
+       JOIN project_tasks dt ON td.depends_on_task_id = dt.id
+       JOIN project_tasks t ON td.task_id = t.id
        WHERE td.id = ?`
     )
     .bind(dependencyId)
@@ -566,9 +568,9 @@ export async function removeDependency(db, dependencyId) {
 
   // Create audit log
   await createAuditLog(db, {
-    userId: null,
+    userId,
     action: 'task_dependency_removed',
-    details: `Removed dependency: ${dependency.predecessor_name} -> ${dependency.successor_name}`,
+    details: `Removed dependency: ${dependency.task_title} depends on ${dependency.depends_on_task_title}`,
     category: 'project_management',
     severity: 'info',
   });
@@ -584,23 +586,156 @@ export async function getProjectDependencies(db, projectId) {
   const query = `
     SELECT
       td.id,
-      td.type,
+      td.dependency_type,
       td.created_at,
-      p.id as predecessor_id,
-      p.name as predecessor_name,
-      p.status as predecessor_status,
-      p.completion_date as predecessor_completion_date,
-      s.id as successor_id,
-      s.name as successor_name,
-      s.status as successor_status,
-      s.start_date as successor_start_date
+      dt.id as depends_on_task_id,
+      dt.title as depends_on_task_title,
+      dt.status as depends_on_task_status,
+      dt.completed_at as depends_on_task_completed_at,
+      t.id as task_id,
+      t.title as task_title,
+      t.status as task_status,
+      t.start_date as task_start_date
     FROM task_dependencies td
-    JOIN tasks p ON td.predecessor_id = p.id
-    JOIN tasks s ON td.successor_id = s.id
-    WHERE p.project_id = ? AND p.deleted_at IS NULL AND s.deleted_at IS NULL
-    ORDER BY s.start_date ASC
+    JOIN project_tasks dt ON td.depends_on_task_id = dt.id
+    JOIN project_tasks t ON td.task_id = t.id
+    WHERE dt.project_id = ? AND dt.is_active = 1 AND t.is_active = 1
+    ORDER BY t.start_date ASC
   `;
 
   const result = await db.prepare(query).bind(projectId).all();
   return result.results || [];
+}
+
+/**
+ * List checklist items for a task
+ * @param {object} db - Database connection
+ * @param {string} taskId - Task ID
+ * @returns {Array} List of checklist items
+ */
+export async function listChecklistItems(db, taskId) {
+  const query = `
+    SELECT
+      id,
+      task_id,
+      title,
+      is_completed,
+      sort_order,
+      created_at,
+      updated_at
+    FROM task_checklist_items
+    WHERE task_id = ?
+    ORDER BY sort_order ASC, created_at ASC
+  `;
+
+  const result = await db.prepare(query).bind(taskId).all();
+  return result.results || [];
+}
+
+/**
+ * Create a checklist item
+ * @param {object} db - Database connection
+ * @param {string} taskId - Task ID
+ * @param {object} data - Checklist item data
+ * @param {string} userId - User ID creating the item
+ * @returns {object} Created checklist item
+ */
+export async function createChecklistItem(db, taskId, data, userId) {
+  const { title, sort_order = 0 } = data;
+
+  if (!title || !title.trim()) {
+    throw new AppError('Checklist item title is required', 400);
+  }
+
+  // Validate task exists
+  const task = await db
+    .prepare('SELECT id FROM project_tasks WHERE id = ? AND is_active = 1')
+    .bind(taskId)
+    .first();
+
+  if (!task) {
+    throw new NotFoundError('Task');
+  }
+
+  // Create checklist item
+  const result = await db
+    .prepare(
+      `INSERT INTO task_checklist_items (task_id, title, sort_order, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?)
+       RETURNING id, task_id, title, is_completed, sort_order, created_at`
+    )
+    .bind(taskId, title.trim(), sort_order, userId, userId)
+    .first();
+
+  return result;
+}
+
+/**
+ * Update a checklist item (mainly for toggling completion)
+ * @param {object} db - Database connection
+ * @param {string} itemId - Checklist item ID
+ * @param {object} updates - Fields to update
+ * @param {string} userId - User ID making the update
+ * @returns {object} Updated checklist item
+ */
+export async function updateChecklistItem(db, itemId, updates, userId) {
+  const fields = [];
+  const values = [];
+
+  if (updates.title !== undefined) {
+    if (!updates.title.trim()) {
+      throw new AppError('Checklist item title is required', 400);
+    }
+    fields.push('title = ?');
+    values.push(updates.title.trim());
+  }
+
+  if (updates.is_completed !== undefined) {
+    fields.push('is_completed = ?');
+    values.push(updates.is_completed ? 1 : 0);
+  }
+
+  if (updates.sort_order !== undefined) {
+    fields.push('sort_order = ?');
+    values.push(updates.sort_order);
+  }
+
+  if (fields.length === 0) {
+    throw new AppError('No fields to update', 400);
+  }
+
+  // Add metadata fields
+  fields.push("updated_at = datetime('now')");
+  fields.push('updated_by = ?');
+  values.push(userId);
+  values.push(itemId);
+
+  await db
+    .prepare(
+      `UPDATE task_checklist_items
+       SET ${fields.join(', ')}
+       WHERE id = ?`
+    )
+    .bind(...values)
+    .run();
+
+  // Return updated item
+  const updated = await db
+    .prepare('SELECT * FROM task_checklist_items WHERE id = ?')
+    .bind(itemId)
+    .first();
+
+  return updated;
+}
+
+/**
+ * Delete a checklist item
+ * @param {object} db - Database connection
+ * @param {string} itemId - Checklist item ID
+ */
+export async function deleteChecklistItem(db, itemId) {
+  await db
+    .prepare('DELETE FROM task_checklist_items WHERE id = ?')
+    .bind(itemId)
+    .run();
 }

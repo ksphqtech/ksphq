@@ -3,6 +3,7 @@
  * Table view for displaying and managing projects
  */
 
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
 export function ProjectListView({ projects = [], isLoading = false }) {
+  const navigate = useNavigate();
   const getStatusVariant = (status) => {
     switch (status?.toLowerCase()) {
       case 'in progress':
@@ -100,7 +102,11 @@ export function ProjectListView({ projects = [], isLoading = false }) {
             </TableHeader>
             <TableBody>
               {projects.map((project) => (
-                <TableRow key={project.id}>
+                <TableRow
+                  key={project.id}
+                  onClick={() => navigate(`/tools/projects/${project.id}`)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell className="font-medium">{project.name}</TableCell>
                   <TableCell>{project.manager}</TableCell>
                   <TableCell>
@@ -113,8 +119,8 @@ export function ProjectListView({ projects = [], isLoading = false }) {
                       {project.priority}
                     </Badge>
                   </TableCell>
-                  <TableCell>{project.startDate}</TableCell>
-                  <TableCell>{project.dueDate}</TableCell>
+                  <TableCell>{project.start_date}</TableCell>
+                  <TableCell>{project.end_date}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 min-w-[100px]">
                       <Progress value={parseInt(project.completion || 0)} className="h-2" />

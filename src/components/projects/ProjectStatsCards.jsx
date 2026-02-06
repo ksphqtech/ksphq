@@ -9,8 +9,8 @@ import { FolderKanban, TrendingUp, CheckCircle2, Clock } from 'lucide-react';
 export function ProjectStatsCards({ projects = [], isLoading = false }) {
   // Calculate stats
   const totalProjects = projects.length;
-  const inProgressProjects = projects.filter(p => p.status === 'In Progress').length;
-  const completedProjects = projects.filter(p => p.status === 'Completed').length;
+  const inProgressProjects = projects.filter(p => p.status === 'in progress').length;
+  const completedProjects = projects.filter(p => p.status === 'completed').length;
   const avgCompletion = totalProjects > 0
     ? Math.round(projects.reduce((acc, p) => acc + parseInt(p.completion || 0), 0) / totalProjects)
     : 0;

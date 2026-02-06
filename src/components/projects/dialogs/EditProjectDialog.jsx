@@ -1,9 +1,13 @@
 /**
  * Edit Project Dialog
- * Form for editing existing projects
+ * Dialog for editing existing project details
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { patch } from '@/lib/api';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -23,307 +27,158 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { useUpdateProject, useProject } from '@/hooks/useProjects';
+import { Loader2 } from 'lucide-react';
 import { useOrgUnits } from '@/hooks/useOrgUnits';
-
-const STATUS_OPTIONS = [
-  { value: 'planning', label: 'Planning' },
-  { value: 'active', label: 'Active' },
-  { value: 'on_hold', label: 'On Hold' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Critical' },
-];
+import { useUsers } from '@/hooks/useUsers';
+import { PROJECT_STATUSES, PRIORITIES, STATUS_LABELS, PRIORITY_LABELS } from '@/lib/projectConstants';
 
 export function EditProjectDialog({ project, open, onOpenChange }) {
-  const updateProjectMutation = useUpdateProject();
+  const queryClient = useQueryClient();
   const { data: orgUnitsData } = useOrgUnits();
+  const { data: usersData } = useUsers();
 
-  // Fetch full project details when dialog opens
-  const { data: fullProjectData, isLoading: isLoadingProject } = useProject(project?.id);
-  const fullProject = fullProjectData?.project;
+  const form = useForm({
+    defaultValues: {
+      name: project?.name || '',
+      description: project?.description || '',
+      status: project?.status || 'planning',
+      priority: project?.priority || 'medium',
+      start_date: project?.start_date || '',
+      end_date: project?.end_date || '',
+      budget_amount: project?.budget_amount || '',
+      project_manager_id: project?.project_manager_id || '',
+      branch_id: project?.branch_id || '',
+    },
+  });
 
-  const [formData, setFormData] = useState({});
-  const [errors, setErrors] = useState({});
-
-  // Extract org units by type
-  const units = Array.isArray(orgUnitsData?.units) ? orgUnitsData.units : [];
-  const branches = units.filter(u => u.type === 'branch');
-  const departments = units.filter(u => u.type === 'department');
-
-  // Initialize form data when full project details are loaded
   useEffect(() => {
-    if (fullProject && open) {
-      setFormData({
-        id: fullProject.id,
-        name: fullProject.name || '',
-        description: fullProject.description || '',
-        status: fullProject.status || 'planning',
-        priority: fullProject.priority || 'medium',
-        start_date: fullProject.start_date || '',
-        due_date: fullProject.due_date || '',
-        branch_id: fullProject.branch_id || '',
-        department_id: fullProject.department_id || '',
+    if (project) {
+      form.reset({
+        name: project.name || '',
+        description: project.description || '',
+        status: project.status || 'planning',
+        priority: project.priority || 'medium',
+        start_date: project.start_date || '',
+        end_date: project.end_date || '',
+        budget_amount: project.budget_amount || '',
+        project_manager_id: project.project_manager_id || '',
+        branch_id: project.branch_id || '',
       });
-      setErrors({});
     }
-  }, [fullProject, open]);
+  }, [project, form]);
 
-  const validateForm = () => {
-    const newErrors = {};
+  const updateProjectMutation = useMutation({
+    mutationFn: (data) => patch(\`/api/projects/\${project.id}\`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projects']);
+      queryClient.invalidateQueries(['project', project.id]);
+      toast.success('Project updated successfully');
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update project');
+    },
+  });
 
-    if (!formData.name?.trim()) {
-      newErrors.name = 'Project name is required';
-    }
-
-    // Validate dates if both are provided
-    if (formData.start_date && formData.due_date) {
-      const startDate = new Date(formData.start_date);
-      const dueDate = new Date(formData.due_date);
-      if (dueDate < startDate) {
-        newErrors.due_date = 'Due date must be after start date';
+  const onSubmit = (data) => {
+    const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        acc[key] = value;
       }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+      return acc;
+    }, {});
+    updateProjectMutation.mutate(cleanedData);
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    // Only send changed fields
-    const updates = {};
-    const originalProject = fullProject || project;
-
-    Object.keys(formData).forEach(key => {
-      if (key === 'id') return; // Don't send ID
-
-      // Handle null vs empty string comparisons
-      const formValue = formData[key] === '' ? null : formData[key];
-      const originalValue = originalProject[key] === '' ? null : originalProject[key];
-
-      if (formValue !== originalValue) {
-        updates[key] = formData[key];
-      }
-    });
-
-    if (Object.keys(updates).length === 0) {
-      onOpenChange(false);
-      return;
-    }
-
-    try {
-      await updateProjectMutation.mutateAsync({ projectId: project.id, updates });
-      onOpenChange(false);
-    } catch (error) {
-      // Error is handled by the hook
-    }
-  };
-
-  // Show loading state while fetching full project details
-  if (open && isLoadingProject) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl">
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            <span className="ml-3 text-muted-foreground">Loading project details...</span>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  const branches = orgUnitsData?.organizational_units?.filter((unit) => unit.type === 'branch') || [];
+  const managers = usersData?.users?.filter((user) => user.is_active) || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Project</DialogTitle>
-          <DialogDescription>
-            Update project information and settings.
-          </DialogDescription>
+          <DialogDescription>Update project details and settings.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 mt-4">
-          {/* Project Name */}
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">
-              Project Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="name"
-              placeholder="Enter project name"
-              value={formData.name || ''}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={errors.name ? 'border-destructive' : ''}
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
+            <Label htmlFor="name">Project Name *</Label>
+            <Input id="name" {...form.register('name', { required: true })} placeholder="Enter project name" />
           </div>
-
-          {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Project description (optional)"
-              value={formData.description || ''}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-            />
+            <Textarea id="description" {...form.register('description')} placeholder="Enter project description" rows={3} />
           </div>
-
-          {/* Status and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status || 'planning'}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-              >
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={form.watch('status')} onValueChange={(value) => form.setValue('status', value)}>
+                <SelectTrigger id="status"><SelectValue placeholder="Select status" /></SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
+                  {PROJECT_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
-              <Select
-                value={formData.priority || 'medium'}
-                onValueChange={(value) => setFormData({ ...formData, priority: value })}
-              >
-                <SelectTrigger id="priority">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={form.watch('priority')} onValueChange={(value) => form.setValue('priority', value)}>
+                <SelectTrigger id="priority"><SelectValue placeholder="Select priority" /></SelectTrigger>
                 <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
+                  {PRIORITIES.map((priority) => (
+                    <SelectItem key={priority} value={priority}>{PRIORITY_LABELS[priority]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
-
-          {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_date">Start Date</Label>
-              <Input
-                id="start_date"
-                type="date"
-                value={formData.start_date || ''}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-              />
+              <Input id="start_date" type="date" {...form.register('start_date')} />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="due_date">Due Date</Label>
-              <Input
-                id="due_date"
-                type="date"
-                value={formData.due_date || ''}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                className={errors.due_date ? 'border-destructive' : ''}
-              />
-              {errors.due_date && (
-                <p className="text-sm text-destructive">{errors.due_date}</p>
-              )}
+              <Label htmlFor="end_date">End Date</Label>
+              <Input id="end_date" type="date" {...form.register('end_date')} />
             </div>
           </div>
-
-          {/* Branch and Department */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="branch_id">Branch</Label>
-              <Select
-                value={formData.branch_id || ''}
-                onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
-              >
-                <SelectTrigger id="branch_id">
-                  <SelectValue placeholder="Select branch (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                  {branches.length === 0 && (
-                    <SelectItem value="none" disabled>
-                      No branches available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="department_id">Department</Label>
-              <Select
-                value={formData.department_id || ''}
-                onValueChange={(value) => setFormData({ ...formData, department_id: value })}
-              >
-                <SelectTrigger id="department_id">
-                  <SelectValue placeholder="Select department (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                  {departments.length === 0 && (
-                    <SelectItem value="none" disabled>
-                      No departments available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="budget_amount">Budget Amount</Label>
+            <Input id="budget_amount" type="number" step="0.01" {...form.register('budget_amount')} placeholder="0.00" />
           </div>
-
-          {/* Info Alert */}
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              Only modified fields will be updated. Leave fields blank to remove values.
-            </AlertDescription>
-          </Alert>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={updateProjectMutation.isPending}
-          >
-            {updateProjectMutation.isPending ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogFooter>
+          <div className="space-y-2">
+            <Label htmlFor="project_manager_id">Project Manager *</Label>
+            <Select value={form.watch('project_manager_id')} onValueChange={(value) => form.setValue('project_manager_id', value)}>
+              <SelectTrigger id="project_manager_id"><SelectValue placeholder="Select project manager" /></SelectTrigger>
+              <SelectContent>
+                {managers.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="branch_id">Branch</Label>
+            <Select value={form.watch('branch_id')} onValueChange={(value) => form.setValue('branch_id', value)}>
+              <SelectTrigger id="branch_id"><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectContent>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateProjectMutation.isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateProjectMutation.isPending}>
+              {updateProjectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

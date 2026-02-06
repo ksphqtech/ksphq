@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { post, patch } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -99,6 +101,7 @@ function EditableSection({ title, isEditing, onEdit, onSave, onCancel, children,
  * @param {string} className - Additional CSS classes
  */
 export function TaskDetailPanel({ taskId, onClose, className }) {
+  const queryClient = useQueryClient();
   const { data: taskData, isLoading } = useTask(taskId);
   const task = taskData?.task;
   const updateTask = useUpdateTask();
@@ -111,6 +114,39 @@ export function TaskDetailPanel({ taskId, onClose, className }) {
     dependencies: false,
     checklist: true,
     comments: false,
+  });
+  const [newComment, setNewComment] = useState('');
+  const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [showAddDependency, setShowAddDependency] = useState(false);
+
+  // Mutations
+  const createComment = useMutation({
+    mutationFn: (data) => post(`/api/tasks/${taskId}/comments`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task', taskId]);
+      toast.success('Comment added');
+      setNewComment('');
+    },
+    onError: () => toast.error('Failed to add comment'),
+  });
+
+  const createChecklistItem = useMutation({
+    mutationFn: (data) => post(`/api/tasks/${taskId}/checklist`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task', taskId]);
+      toast.success('Checklist item added');
+      setNewChecklistItem('');
+    },
+    onError: () => toast.error('Failed to add checklist item'),
+  });
+
+  const toggleChecklistItem = useMutation({
+    mutationFn: ({ itemId, isCompleted }) =>
+      patch(`/api/tasks/${taskId}/checklist/${itemId}`, { is_completed: !isCompleted }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task', taskId]);
+    },
+    onError: () => toast.error('Failed to update checklist item'),
   });
 
   if (isLoading) {
@@ -166,6 +202,31 @@ export function TaskDetailPanel({ taskId, onClose, className }) {
     if (!task.checklist || task.checklist.length === 0) return 0;
     const completed = task.checklist.filter((item) => item.completed).length;
     return Math.round((completed / task.checklist.length) * 100);
+  };
+
+  const handleAddChecklistItem = () => {
+    if (!newChecklistItem.trim()) {
+      toast.error('Please enter a checklist item');
+      return;
+    }
+    createChecklistItem.mutate({ title: newChecklistItem });
+  };
+
+  const handleToggleChecklistItem = (itemId, isCompleted) => {
+    toggleChecklistItem.mutate({ itemId, isCompleted });
+  };
+
+  const handlePostComment = () => {
+    if (!newComment.trim()) {
+      toast.error('Please enter a comment');
+      return;
+    }
+    createComment.mutate({ comment: newComment });
+  };
+
+  const handleAddDependency = () => {
+    setShowAddDependency(true);
+    toast.info('Dependency management coming soon');
   };
 
   return (
@@ -334,7 +395,7 @@ export function TaskDetailPanel({ taskId, onClose, className }) {
             ) : (
               <p className="text-sm text-muted-foreground">No dependencies</p>
             )}
-            <Button variant="outline" size="sm" className="w-full">
+            <Button variant="outline" size="sm" className="w-full" onClick={handleAddDependency}>
               <Plus className="h-3 w-3 mr-1" />
               Add Dependency
             </Button>
@@ -361,11 +422,14 @@ export function TaskDetailPanel({ taskId, onClose, className }) {
               <div className="space-y-2">
                 {task.checklist.map((item) => (
                   <div key={item.id} className="flex items-center gap-2">
-                    <Checkbox checked={item.completed} />
+                    <Checkbox
+                      checked={item.is_completed === 1}
+                      onCheckedChange={() => handleToggleChecklistItem(item.id, item.is_completed)}
+                    />
                     <span
                       className={cn(
                         'text-sm flex-1',
-                        item.completed && 'line-through text-muted-foreground'
+                        item.is_completed === 1 && 'line-through text-muted-foreground'
                       )}
                     >
                       {item.title}
@@ -376,10 +440,24 @@ export function TaskDetailPanel({ taskId, onClose, className }) {
             ) : (
               <p className="text-sm text-muted-foreground">No checklist items</p>
             )}
-            <Button variant="outline" size="sm" className="w-full">
-              <Plus className="h-3 w-3 mr-1" />
-              Add Item
-            </Button>
+            <div className="space-y-2">
+              <Input
+                placeholder="Add checklist item..."
+                value={newChecklistItem}
+                onChange={(e) => setNewChecklistItem(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistItem()}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleAddChecklistItem}
+                disabled={createChecklistItem.isPending}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Item
+              </Button>
+            </div>
           </CollapsibleContent>
         </Collapsible>
 
@@ -427,8 +505,18 @@ export function TaskDetailPanel({ taskId, onClose, className }) {
               <p className="text-sm text-muted-foreground">No comments yet</p>
             )}
             <div className="space-y-2">
-              <Textarea placeholder="Add a comment..." rows={3} />
-              <Button size="sm" className="w-full">
+              <Textarea
+                placeholder="Add a comment..."
+                rows={3}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={handlePostComment}
+                disabled={createComment.isPending}
+              >
                 <MessageSquare className="h-3 w-3 mr-1" />
                 Post Comment
               </Button>

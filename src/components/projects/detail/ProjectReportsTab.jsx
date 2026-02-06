@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTasks } from '@/hooks/useTasks';
@@ -37,8 +38,15 @@ export function ProjectReportsTab({ project, projectId }) {
 
   // Handle export functions
   const handleExportPDF = () => {
-    // TODO: Implement PDF export using jsPDF or similar
-    console.log('Exporting to PDF...');
+    // Create a print-friendly version of the report
+    const printContent = document.getElementById('project-reports-content');
+    if (!printContent) {
+      toast.error('Report content not found');
+      return;
+    }
+
+    // Open print dialog (which can save as PDF)
+    window.print();
   };
 
   const handleExportCSV = () => {
@@ -62,7 +70,7 @@ export function ProjectReportsTab({ project, projectId }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div id="project-reports-content" className="space-y-6">
       {/* Header with Export Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>

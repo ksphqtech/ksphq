@@ -138,7 +138,10 @@ export async function listProjects(db, filters = {}, userId, userPermissions) {
       p.description,
       p.status,
       p.priority,
-      p.dates,
+      p.start_date,
+      p.end_date,
+      p.actual_start_date,
+      p.actual_end_date,
       p.completion_percentage,
       p.budget_amount,
       p.actual_cost,
@@ -206,25 +209,16 @@ export async function getProjectById(db, projectId) {
       pme.id,
       pme.user_id,
       pme.role,
-      pme.added_at,
+      pme.created_at as added_at,
       u.first_name || ' ' || u.last_name as user_name,
       u.email as user_email
     FROM project_members pme
     LEFT JOIN users u ON pme.user_id = u.id
     WHERE pme.project_id = ?
-    ORDER BY pme.added_at ASC
+    ORDER BY pme.created_at ASC
   `;
   const membersResult = await db.prepare(membersQuery).bind(projectId).all();
   project.members = membersResult.results || [];
-
-  // Parse JSON fields if any
-  if (project.dates && typeof project.dates === 'string') {
-    try {
-      project.dates = JSON.parse(project.dates);
-    } catch (e) {
-      project.dates = null;
-    }
-  }
 
   return project;
 }
@@ -242,7 +236,10 @@ export async function createProject(db, data, userId) {
     description = null,
     status = 'planning',
     priority = 'medium',
-    dates = null,
+    start_date = null,
+    end_date = null,
+    actual_start_date = null,
+    actual_end_date = null,
     completion_percentage = 0,
     budget_amount = null,
     project_manager_id,
@@ -250,11 +247,9 @@ export async function createProject(db, data, userId) {
   } = data;
 
   // Validate dates if provided
-  if (dates) {
-    if (typeof dates === 'object' && dates.end_date && dates.start_date) {
-      if (new Date(dates.end_date) < new Date(dates.start_date)) {
-        throw new AppError('End date must be after start date', 400);
-      }
+  if (end_date && start_date) {
+    if (new Date(end_date) < new Date(start_date)) {
+      throw new AppError('End date must be after start date', 400);
     }
   }
 
@@ -273,10 +268,11 @@ export async function createProject(db, data, userId) {
     .prepare(
       `INSERT INTO projects (
         name, description, status, priority,
-        dates, completion_percentage, budget_amount, actual_cost,
+        start_date, end_date, actual_start_date, actual_end_date,
+        completion_percentage, budget_amount, actual_cost,
         project_manager_id, branch_id,
         created_by, updated_by, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 1)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 1)
       RETURNING id, name, status, priority, created_at`
     )
     .bind(
@@ -284,7 +280,10 @@ export async function createProject(db, data, userId) {
       description,
       status,
       priority,
-      dates ? JSON.stringify(dates) : null,
+      start_date,
+      end_date,
+      actual_start_date,
+      actual_end_date,
       completion_percentage,
       budget_amount,
       project_manager_id,
@@ -353,7 +352,7 @@ export async function updateProject(db, projectId, updates, userId) {
 
   if (updates.status !== undefined) {
     // Validate status
-    const validStatuses = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
+    const validStatuses = ['planning', 'in progress', 'on hold', 'completed', 'cancelled'];
     if (!validStatuses.includes(updates.status)) {
       throw new AppError('Invalid project status', 400);
     }
@@ -363,7 +362,7 @@ export async function updateProject(db, projectId, updates, userId) {
 
   if (updates.priority !== undefined) {
     // Validate priority
-    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    const validPriorities = ['low', 'medium', 'high', 'urgent'];
     if (!validPriorities.includes(updates.priority)) {
       throw new AppError('Invalid project priority', 400);
     }
@@ -371,17 +370,31 @@ export async function updateProject(db, projectId, updates, userId) {
     values.push(updates.priority);
   }
 
-  if (updates.dates !== undefined) {
-    // Validate dates if provided
-    if (updates.dates && typeof updates.dates === 'object') {
-      if (updates.dates.end_date && updates.dates.start_date) {
-        if (new Date(updates.dates.end_date) < new Date(updates.dates.start_date)) {
-          throw new AppError('End date must be after start date', 400);
-        }
-      }
+  if (updates.start_date !== undefined) {
+    fields.push('start_date = ?');
+    values.push(updates.start_date);
+  }
+
+  if (updates.end_date !== undefined) {
+    fields.push('end_date = ?');
+    values.push(updates.end_date);
+  }
+
+  if (updates.actual_start_date !== undefined) {
+    fields.push('actual_start_date = ?');
+    values.push(updates.actual_start_date);
+  }
+
+  if (updates.actual_end_date !== undefined) {
+    fields.push('actual_end_date = ?');
+    values.push(updates.actual_end_date);
+  }
+
+  // Validate dates if both start and end provided
+  if (updates.end_date && updates.start_date) {
+    if (new Date(updates.end_date) < new Date(updates.start_date)) {
+      throw new AppError('End date must be after start date', 400);
     }
-    fields.push('dates = ?');
-    values.push(updates.dates ? JSON.stringify(updates.dates) : null);
   }
 
   if (updates.completion_percentage !== undefined) {
@@ -535,11 +548,11 @@ export async function addProjectMember(db, projectId, memberId, role = 'member')
   // Add member
   const result = await db
     .prepare(
-      `INSERT INTO project_members (project_id, user_id, role)
-       VALUES (?, ?, ?)
-       RETURNING id, user_id, role, added_at`
+      `INSERT INTO project_members (project_id, user_id, role, created_by)
+       VALUES (?, ?, ?, ?)
+       RETURNING id, user_id, role, created_at as added_at`
     )
-    .bind(projectId, memberId, role)
+    .bind(projectId, memberId, role, memberId)
     .first();
 
   return result;

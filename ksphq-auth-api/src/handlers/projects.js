@@ -69,24 +69,10 @@ function canAccessProject(currentUser, project) {
     return true;
   }
 
-  if (projectsPerm === 'department' && currentUser.department_id) {
-    if (currentUser.department_id !== project.department_id) {
-      throw new ForbiddenError('Can only access projects in your department');
-    }
-    return true;
-  }
-
-  if (projectsPerm === 'team' && currentUser.team_id) {
-    if (currentUser.team_id !== project.team_id) {
-      throw new ForbiddenError('Can only access projects in your team');
-    }
-    return true;
-  }
-
   if (projectsPerm === 'view_own') {
-    // Check if user is owner, creator, or member
+    // Check if user is project manager, creator, or member
     const isMember = project.members?.some(m => m.user_id === currentUser.id);
-    if (project.owner_id !== currentUser.id && project.created_by !== currentUser.id && !isMember) {
+    if (project.project_manager_id !== currentUser.id && project.created_by !== currentUser.id && !isMember) {
       throw new ForbiddenError('Can only access your own projects');
     }
     return true;
@@ -108,11 +94,9 @@ export async function handleListProjects(request, env, ctx, currentUser) {
     const url = new URL(request.url);
     const filters = {
       branch_id: url.searchParams.get('branch_id'),
-      department_id: url.searchParams.get('department_id'),
-      team_id: url.searchParams.get('team_id'),
       status: url.searchParams.get('status'),
       priority: url.searchParams.get('priority'),
-      owner_id: url.searchParams.get('owner_id'),
+      project_manager_id: url.searchParams.get('project_manager_id'),
       search: url.searchParams.get('search'),
       include_deleted: url.searchParams.get('include_deleted') === 'true',
       sort: url.searchParams.get('sort') || 'created_at:desc',
@@ -171,16 +155,14 @@ export async function handleCreateProject(request, env, ctx, currentUser) {
     const body = await request.json();
 
     // Validate required fields
-    if (!body.project_code || !body.name || !body.start_date || !body.owner_id) {
-      return errorResponse('Missing required fields: project_code, name, start_date, owner_id', 400, null, env);
+    if (!body.name || !body.project_manager_id) {
+      return errorResponse('Missing required fields: name, project_manager_id', 400, null, env);
     }
 
     // Apply organizational defaults if not provided
     const data = {
       ...body,
       branch_id: body.branch_id || currentUser.branch_id,
-      department_id: body.department_id || currentUser.department_id,
-      team_id: body.team_id || currentUser.team_id,
     };
 
     // Create project
@@ -325,16 +307,14 @@ export async function handleListProjectMembers(request, env, ctx, currentUser, p
         pm.id,
         pm.user_id,
         pm.role,
-        pm.added_at,
+        pm.created_at as added_at,
         u.first_name || ' ' || u.last_name as user_name,
         u.email as user_email,
-        u.branch_id,
-        u.department_id,
-        u.team_id
+        u.branch_id
       FROM project_members pm
       LEFT JOIN users u ON pm.user_id = u.id
       WHERE pm.project_id = ?
-      ORDER BY pm.added_at ASC
+      ORDER BY pm.created_at ASC
     `;
     const membersResult = await env.DB.prepare(membersQuery).bind(projectId).all();
     const members = membersResult.results || [];

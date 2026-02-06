@@ -65,6 +65,10 @@ import {
   handleListDependencies,
   handleAddDependency,
   handleRemoveDependency,
+  handleListChecklistItems,
+  handleCreateChecklistItem,
+  handleUpdateChecklistItem,
+  handleDeleteChecklistItem,
 } from './handlers/tasks.js';
 import {
   handleListMaterials,
@@ -76,6 +80,12 @@ import {
 import {
   handleGetProjectAnalytics,
 } from './handlers/projectAnalytics.js';
+import {
+  handleListComments,
+  handleCreateComment,
+  handleUpdateComment,
+  handleDeleteComment,
+} from './handlers/comments.js';
 
 /**
  * Extract ID from pathname like /api/users/123abc
@@ -376,6 +386,52 @@ export default {
         const taskId = parts[3];
         const depId = parts[5];
         response = await asyncHandler(handleRemoveDependency)(request, env, null, user, taskId, depId);
+      }
+      // Project Control Routes - Task Comments
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/comments$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const taskId = pathname.split('/')[3];
+        response = await asyncHandler(handleListComments)(request, env, null, user, taskId);
+      }
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/comments$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const taskId = pathname.split('/')[3];
+        response = await asyncHandler(handleCreateComment)(request, env, null, user, taskId);
+      }
+      else if (pathname.match(/^\/api\/comments\/[^/]+$/) && method === 'PATCH') {
+        const user = await requireAuth(request, env);
+        const commentId = pathname.split('/')[3];
+        response = await asyncHandler(handleUpdateComment)(request, env, null, user, commentId);
+      }
+      else if (pathname.match(/^\/api\/comments\/[^/]+$/) && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const commentId = pathname.split('/')[3];
+        response = await asyncHandler(handleDeleteComment)(request, env, null, user, commentId);
+      }
+      // Project Control Routes - Task Checklist
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/checklist$/) && method === 'GET') {
+        const user = await requireAuth(request, env);
+        const taskId = pathname.split('/')[3];
+        response = await asyncHandler(handleListChecklistItems)(request, env, null, user, taskId);
+      }
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/checklist$/) && method === 'POST') {
+        const user = await requireAuth(request, env);
+        const taskId = pathname.split('/')[3];
+        response = await asyncHandler(handleCreateChecklistItem)(request, env, null, user, taskId);
+      }
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/checklist\/[^/]+$/) && method === 'PATCH') {
+        const user = await requireAuth(request, env);
+        const parts = pathname.split('/');
+        const taskId = parts[3];
+        const itemId = parts[5];
+        response = await asyncHandler(handleUpdateChecklistItem)(request, env, null, user, taskId, itemId);
+      }
+      else if (pathname.match(/^\/api\/tasks\/[^/]+\/checklist\/[^/]+$/) && method === 'DELETE') {
+        const user = await requireAuth(request, env);
+        const parts = pathname.split('/');
+        const taskId = parts[3];
+        const itemId = parts[5];
+        response = await asyncHandler(handleDeleteChecklistItem)(request, env, null, user, taskId, itemId);
       }
       else if (pathname.startsWith('/api/tasks/') && method === 'PATCH') {
         const user = await requireAuth(request, env);

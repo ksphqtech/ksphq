@@ -17,6 +17,8 @@ import { ProjectOverviewTab } from '@/components/projects/detail/ProjectOverview
 import { ProjectTeamTab } from '@/components/projects/detail/ProjectTeamTab';
 import { ProjectMaterialsTab } from '@/components/projects/detail/ProjectMaterialsTab';
 import { ProjectReportsTab } from '@/components/projects/detail/ProjectReportsTab';
+import { ProjectActivityTab } from '@/components/projects/detail/ProjectActivityTab';
+import { EditProjectDialog } from '@/components/projects/dialogs/EditProjectDialog';
 import { useState } from 'react';
 import { useToolNavigation } from '@/hooks/useNavigation';
 
@@ -27,14 +29,14 @@ export function ProjectDetail() {
   const { data: project, isLoading, isError } = useProject(projectId);
   const deleteProject = useDeleteProject();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleBack = () => {
     navigate('/tools/projects');
   };
 
   const handleEdit = () => {
-    // TODO: Navigate to edit page or open edit dialog
-    console.log('Edit project:', projectId);
+    setShowEditDialog(true);
   };
 
   const handleDelete = async () => {
@@ -155,11 +157,7 @@ export function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="activity" className="mt-6">
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                Activity log coming soon...
-              </CardContent>
-            </Card>
+            <ProjectActivityTab projectId={projectId} />
           </TabsContent>
 
           <TabsContent value="reports" className="mt-6">
@@ -167,6 +165,13 @@ export function ProjectDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit Project Dialog */}
+      <EditProjectDialog
+        project={project}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
