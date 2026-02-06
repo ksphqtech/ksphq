@@ -8,6 +8,7 @@ import { ProjectStatsCards } from '@/components/projects/ProjectStatsCards'
 import { ProjectFilters } from '@/components/projects/ProjectFilters'
 import { ProjectListView } from '@/components/projects/ProjectListView'
 import { CreateProjectDialog } from '@/components/projects/dialogs/CreateProjectDialog'
+import { ErrorAlert } from '@/components/ui/error-alert'
 
 export function ProjectControl() {
   const toolConfig = useToolNavigation('projects')
@@ -25,7 +26,7 @@ export function ProjectControl() {
       const searchLower = filters.search.toLowerCase()
       const matchesSearch =
         project.name?.toLowerCase().includes(searchLower) ||
-        project.manager?.toLowerCase().includes(searchLower)
+        project.project_manager_name?.toLowerCase().includes(searchLower)
       if (!matchesSearch) return false
     }
 
@@ -62,23 +63,39 @@ export function ProjectControl() {
           </Button>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <ErrorAlert
+            error={error}
+            title="Failed to Load Projects"
+            showRetry={true}
+            onRetry={() => window.location.reload()}
+          />
+        )}
+
         {/* Stats Cards */}
-        <ProjectStatsCards
-          projects={filteredProjects}
-          isLoading={isLoading}
-        />
+        {!error && (
+          <ProjectStatsCards
+            projects={filteredProjects}
+            isLoading={isLoading}
+          />
+        )}
 
         {/* Filters */}
-        <ProjectFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
+        {!error && (
+          <ProjectFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
+        )}
 
         {/* Project List */}
-        <ProjectListView
-          projects={filteredProjects}
-          isLoading={isLoading}
-        />
+        {!error && (
+          <ProjectListView
+            projects={filteredProjects}
+            isLoading={isLoading}
+          />
+        )}
 
         {/* Create Project Dialog */}
         <CreateProjectDialog

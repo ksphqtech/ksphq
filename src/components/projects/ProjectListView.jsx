@@ -108,7 +108,7 @@ export function ProjectListView({ projects = [], isLoading = false }) {
                   className="cursor-pointer hover:bg-muted/50"
                 >
                   <TableCell className="font-medium">{project.name}</TableCell>
-                  <TableCell>{project.manager}</TableCell>
+                  <TableCell>{project.project_manager_name || 'Not assigned'}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(project.status)}>
                       {project.status}
@@ -123,9 +123,9 @@ export function ProjectListView({ projects = [], isLoading = false }) {
                   <TableCell>{project.end_date}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 min-w-[100px]">
-                      <Progress value={parseInt(project.completion || 0)} className="h-2" />
+                      <Progress value={parseInt(project.completion_percentage || 0)} className="h-2" />
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        {project.completion}
+                        {project.completion_percentage}%
                       </span>
                     </div>
                   </TableCell>

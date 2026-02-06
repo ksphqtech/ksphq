@@ -51,6 +51,10 @@ export function ProjectOverviewTab({ project }) {
     if (project.progress !== undefined) {
       return project.progress;
     }
+    if (project.completion_percentage !== undefined) {
+      const completion = parseInt(project.completion_percentage);
+      return isNaN(completion) ? 0 : completion;
+    }
     if (project.completion !== undefined) {
       const completion = parseInt(project.completion);
       return isNaN(completion) ? 0 : completion;
@@ -145,7 +149,7 @@ export function ProjectOverviewTab({ project }) {
             <div className="flex-1">
               <h3 className="text-sm font-medium mb-1">Project Manager</h3>
               <p className="text-sm text-muted-foreground">
-                {project.manager || project.created_by || 'Not assigned'}
+                {project.project_manager_name || project.manager || project.created_by || 'Not assigned'}
               </p>
             </div>
           </div>

@@ -24,6 +24,12 @@ import {
   updateProjectProgress,
   updateTaskHierarchyProgress,
 } from '../utils/progressCalculator.js';
+import {
+  createTaskSchema,
+  updateTaskSchema,
+  taskDependencySchema,
+} from '../utils/projectValidation.js';
+import { sanitizeTaskData } from '../utils/sanitization.js';
 
 /**
  * Check if user has project management permissions
@@ -178,14 +184,21 @@ export async function handleCreateTask(request, env, ctx, currentUser, projectId
     // Parse request body
     const body = await request.json();
 
-    // Validate required fields
-    if (!body.name) {
-      return errorResponse('Missing required field: name', 400, null, env);
-    }
+    // Add project_id to body
+    const dataWithProjectId = {
+      ...body,
+      project_id: projectId,
+    };
+
+    // Sanitize input
+    const sanitizedData = sanitizeTaskData(dataWithProjectId);
+
+    // Validate input
+    const validatedData = createTaskSchema.parse(sanitizedData);
 
     // Add metadata
     const data = {
-      ...body,
+      ...validatedData,
       created_by: currentUser.id,
     };
 
@@ -208,6 +221,16 @@ export async function handleCreateTask(request, env, ctx, currentUser, projectId
       201
     );
   } catch (error) {
+    if (error.name === 'ZodError') {
+      const fieldErrors = error.errors.map(e => ({
+        field: e.path.join('.'),
+        message: e.message,
+      }));
+      return errorResponse('Validation failed', 400, { errors: fieldErrors }, env);
+    }
+    if (error.message && error.message.includes('dangerous')) {
+      return errorResponse('Input contains potentially dangerous content', 400, null, env);
+    }
     if (error instanceof AppError) {
       return errorResponse(error.message, error.statusCode, error.details, env);
     }
@@ -235,9 +258,15 @@ export async function handleUpdateTask(request, env, ctx, currentUser, taskId) {
     // Parse request body
     const body = await request.json();
 
+    // Sanitize input
+    const sanitizedData = sanitizeTaskData(body);
+
+    // Validate input
+    const validatedData = updateTaskSchema.parse(sanitizedData);
+
     // Add metadata
     const updates = {
-      ...body,
+      ...validatedData,
       updated_by: currentUser.id,
     };
 
@@ -260,6 +289,16 @@ export async function handleUpdateTask(request, env, ctx, currentUser, taskId) {
       message: 'Task updated successfully',
     });
   } catch (error) {
+    if (error.name === 'ZodError') {
+      const fieldErrors = error.errors.map(e => ({
+        field: e.path.join('.'),
+        message: e.message,
+      }));
+      return errorResponse('Validation failed', 400, { errors: fieldErrors }, env);
+    }
+    if (error.message && error.message.includes('dangerous')) {
+      return errorResponse('Input contains potentially dangerous content', 400, null, env);
+    }
     if (error instanceof AppError) {
       return errorResponse(error.message, error.statusCode, error.details, env);
     }

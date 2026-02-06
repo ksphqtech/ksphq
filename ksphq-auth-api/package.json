@@ -7,7 +7,10 @@
     "dev": "wrangler dev --local",
     "deploy": "wrangler deploy",
     "db:migrate:dev": "wrangler d1 execute ksphq-auth-db-dev --local --file=./src/db/schema.sql",
-    "db:migrate:prod": "wrangler d1 execute ksphq-auth-db --file=./src/db/schema.sql"
+    "db:migrate:prod": "wrangler d1 execute ksphq-auth-db --file=./src/db/schema.sql",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,6 +18,9 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "wrangler": "^3.22.1"
+    "wrangler": "^3.22.1",
+    "vitest": "^1.2.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "better-sqlite3": "^9.4.0"
   }
 }

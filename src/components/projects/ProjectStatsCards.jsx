@@ -12,7 +12,7 @@ export function ProjectStatsCards({ projects = [], isLoading = false }) {
   const inProgressProjects = projects.filter(p => p.status === 'in progress').length;
   const completedProjects = projects.filter(p => p.status === 'completed').length;
   const avgCompletion = totalProjects > 0
-    ? Math.round(projects.reduce((acc, p) => acc + parseInt(p.completion || 0), 0) / totalProjects)
+    ? Math.round(projects.reduce((acc, p) => acc + parseInt(p.completion_percentage || p.completion || 0), 0) / totalProjects)
     : 0;
 
   if (isLoading) {

@@ -4,7 +4,7 @@
  */
 
 import { successResponse, errorResponse } from '../utils/response.js';
-import { AppError, ForbiddenError } from '../utils/errors.js';
+import { AppError, ForbiddenError, ValidationError } from '../utils/errors.js';
 import {
   listProjects,
   getProjectById,
@@ -15,6 +15,12 @@ import {
   removeProjectMember,
 } from '../db/projectQueries.js';
 import { hasToolPermission } from '../middleware/permissions.js';
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  listProjectsQuerySchema,
+} from '../utils/projectValidation.js';
+import { sanitizeProjectData } from '../utils/sanitization.js';
 
 /**
  * Check if user has project management permissions
@@ -92,16 +98,29 @@ export async function handleListProjects(request, env, ctx, currentUser) {
 
     // Parse query parameters
     const url = new URL(request.url);
-    const filters = {
+    const queryParams = {
       branch_id: url.searchParams.get('branch_id'),
       status: url.searchParams.get('status'),
       priority: url.searchParams.get('priority'),
       project_manager_id: url.searchParams.get('project_manager_id'),
       search: url.searchParams.get('search'),
+      sort: url.searchParams.get('sort'),
+      page: url.searchParams.get('page'),
+      limit: url.searchParams.get('limit'),
+    };
+
+    // Remove null values
+    Object.keys(queryParams).forEach(key => {
+      if (queryParams[key] === null) delete queryParams[key];
+    });
+
+    // Validate query parameters
+    const validatedParams = listProjectsQuerySchema.parse(queryParams);
+
+    // Add include_deleted (not part of validation schema)
+    const filters = {
+      ...validatedParams,
       include_deleted: url.searchParams.get('include_deleted') === 'true',
-      sort: url.searchParams.get('sort') || 'created_at:desc',
-      page: parseInt(url.searchParams.get('page')) || 1,
-      limit: parseInt(url.searchParams.get('limit')) || 50,
     };
 
     // List projects with user's permission scope
@@ -109,6 +128,13 @@ export async function handleListProjects(request, env, ctx, currentUser) {
 
     return successResponse(result);
   } catch (error) {
+    if (error.name === 'ZodError') {
+      const fieldErrors = error.errors.map(e => ({
+        field: e.path.join('.'),
+        message: e.message,
+      }));
+      return errorResponse('Validation failed', 400, { errors: fieldErrors }, env);
+    }
     if (error instanceof AppError) {
       return errorResponse(error.message, error.statusCode, error.details, env);
     }
@@ -154,19 +180,20 @@ export async function handleCreateProject(request, env, ctx, currentUser) {
     // Parse request body
     const body = await request.json();
 
-    // Validate required fields
-    if (!body.name || !body.project_manager_id) {
-      return errorResponse('Missing required fields: name, project_manager_id', 400, null, env);
-    }
-
     // Apply organizational defaults if not provided
-    const data = {
+    const dataWithDefaults = {
       ...body,
       branch_id: body.branch_id || currentUser.branch_id,
     };
 
+    // Sanitize input
+    const sanitizedData = sanitizeProjectData(dataWithDefaults);
+
+    // Validate input
+    const validatedData = createProjectSchema.parse(sanitizedData);
+
     // Create project
-    const result = await createProject(env.DB, data, currentUser.id);
+    const result = await createProject(env.DB, validatedData, currentUser.id);
 
     return successResponse(
       {
@@ -176,6 +203,16 @@ export async function handleCreateProject(request, env, ctx, currentUser) {
       201
     );
   } catch (error) {
+    if (error.name === 'ZodError') {
+      const fieldErrors = error.errors.map(e => ({
+        field: e.path.join('.'),
+        message: e.message,
+      }));
+      return errorResponse('Validation failed', 400, { errors: fieldErrors }, env);
+    }
+    if (error.message && error.message.includes('dangerous')) {
+      return errorResponse('Input contains potentially dangerous content', 400, null, env);
+    }
     if (error instanceof AppError) {
       return errorResponse(error.message, error.statusCode, error.details, env);
     }
@@ -200,14 +237,30 @@ export async function handleUpdateProject(request, env, ctx, currentUser, projec
     // Parse request body
     const body = await request.json();
 
+    // Sanitize input
+    const sanitizedData = sanitizeProjectData(body);
+
+    // Validate input
+    const validatedData = updateProjectSchema.parse(sanitizedData);
+
     // Update project
-    const updated = await updateProject(env.DB, projectId, body, currentUser.id);
+    const updated = await updateProject(env.DB, projectId, validatedData, currentUser.id);
 
     return successResponse({
       project: updated,
       message: 'Project updated successfully',
     });
   } catch (error) {
+    if (error.name === 'ZodError') {
+      const fieldErrors = error.errors.map(e => ({
+        field: e.path.join('.'),
+        message: e.message,
+      }));
+      return errorResponse('Validation failed', 400, { errors: fieldErrors }, env);
+    }
+    if (error.message && error.message.includes('dangerous')) {
+      return errorResponse('Input contains potentially dangerous content', 400, null, env);
+    }
     if (error instanceof AppError) {
       return errorResponse(error.message, error.statusCode, error.details, env);
     }
