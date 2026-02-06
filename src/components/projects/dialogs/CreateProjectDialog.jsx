@@ -27,25 +27,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useCreateProject } from '@/hooks/useProjects';
 import { useOrgUnits } from '@/hooks/useOrgUnits';
-
-const STATUS_OPTIONS = [
-  { value: 'planning', label: 'Planning' },
-  { value: 'active', label: 'Active' },
-  { value: 'on_hold', label: 'On Hold' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Critical' },
-];
+import { useUsers } from '@/hooks/useUsers';
+import { PROJECT_STATUSES, PRIORITIES, STATUS_LABELS, PRIORITY_LABELS } from '@/lib/projectConstants';
 
 export function CreateProjectDialog({ open, onOpenChange }) {
   const createProject = useCreateProject();
   const { data: orgUnitsData } = useOrgUnits();
+  const { data: usersData } = useUsers();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -53,16 +41,16 @@ export function CreateProjectDialog({ open, onOpenChange }) {
     status: 'planning',
     priority: 'medium',
     start_date: '',
-    due_date: '',
+    end_date: '',
+    project_manager_id: '',
     branch_id: '',
-    department_id: '',
   });
   const [errors, setErrors] = useState({});
 
-  // Extract org units by type
-  const units = Array.isArray(orgUnitsData?.units) ? orgUnitsData.units : [];
+  // Extract org units and users
+  const units = Array.isArray(orgUnitsData?.organizational_units) ? orgUnitsData.organizational_units : [];
   const branches = units.filter(u => u.type === 'branch');
-  const departments = units.filter(u => u.type === 'department');
+  const managers = usersData?.users?.filter(u => u.is_active) || [];
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -73,9 +61,9 @@ export function CreateProjectDialog({ open, onOpenChange }) {
         status: 'planning',
         priority: 'medium',
         start_date: '',
-        due_date: '',
+        end_date: '',
+        project_manager_id: '',
         branch_id: '',
-        department_id: '',
       });
       setErrors({});
     }
@@ -88,12 +76,16 @@ export function CreateProjectDialog({ open, onOpenChange }) {
       newErrors.name = 'Project name is required';
     }
 
+    if (!formData.project_manager_id) {
+      newErrors.project_manager_id = 'Project manager is required';
+    }
+
     // Validate dates if both are provided
-    if (formData.start_date && formData.due_date) {
+    if (formData.start_date && formData.end_date) {
       const startDate = new Date(formData.start_date);
-      const dueDate = new Date(formData.due_date);
-      if (dueDate < startDate) {
-        newErrors.due_date = 'Due date must be after start date';
+      const endDate = new Date(formData.end_date);
+      if (endDate < startDate) {
+        newErrors.end_date = 'End date must be after start date';
       }
     }
 
@@ -107,9 +99,10 @@ export function CreateProjectDialog({ open, onOpenChange }) {
     }
 
     try {
-      // Only send non-empty fields
+      // Send required and optional fields
       const projectData = {
         name: formData.name.trim(),
+        project_manager_id: formData.project_manager_id,
         status: formData.status,
         priority: formData.priority,
       };
@@ -120,14 +113,11 @@ export function CreateProjectDialog({ open, onOpenChange }) {
       if (formData.start_date) {
         projectData.start_date = formData.start_date;
       }
-      if (formData.due_date) {
-        projectData.due_date = formData.due_date;
+      if (formData.end_date) {
+        projectData.end_date = formData.end_date;
       }
       if (formData.branch_id) {
         projectData.branch_id = formData.branch_id;
-      }
-      if (formData.department_id) {
-        projectData.department_id = formData.department_id;
       }
 
       await createProject.mutateAsync(projectData);
@@ -177,6 +167,31 @@ export function CreateProjectDialog({ open, onOpenChange }) {
             />
           </div>
 
+          {/* Project Manager */}
+          <div className="space-y-2">
+            <Label htmlFor="project_manager_id">
+              Project Manager <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={formData.project_manager_id}
+              onValueChange={(value) => setFormData({ ...formData, project_manager_id: value })}
+            >
+              <SelectTrigger id="project_manager_id" className={errors.project_manager_id ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select project manager" />
+              </SelectTrigger>
+              <SelectContent>
+                {usersData?.users?.filter(u => u.is_active).map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.first_name} {user.last_name} ({user.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.project_manager_id && (
+              <p className="text-sm text-destructive">{errors.project_manager_id}</p>
+            )}
+          </div>
+
           {/* Status and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -189,9 +204,9 @@ export function CreateProjectDialog({ open, onOpenChange }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                  {PROJECT_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {STATUS_LABELS[status]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -208,9 +223,9 @@ export function CreateProjectDialog({ open, onOpenChange }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                  {PRIORITIES.map((priority) => (
+                    <SelectItem key={priority} value={priority}>
+                      {PRIORITY_LABELS[priority]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -231,69 +246,43 @@ export function CreateProjectDialog({ open, onOpenChange }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="due_date">Due Date</Label>
+              <Label htmlFor="end_date">End Date</Label>
               <Input
-                id="due_date"
+                id="end_date"
                 type="date"
-                value={formData.due_date}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                className={errors.due_date ? 'border-destructive' : ''}
+                value={formData.end_date}
+                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                className={errors.end_date ? 'border-destructive' : ''}
               />
-              {errors.due_date && (
-                <p className="text-sm text-destructive">{errors.due_date}</p>
+              {errors.end_date && (
+                <p className="text-sm text-destructive">{errors.end_date}</p>
               )}
             </div>
           </div>
 
-          {/* Branch and Department */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="branch_id">Branch</Label>
-              <Select
-                value={formData.branch_id}
-                onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
-              >
-                <SelectTrigger id="branch_id">
-                  <SelectValue placeholder="Select branch (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                  {branches.length === 0 && (
-                    <SelectItem value="none" disabled>
-                      No branches available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="department_id">Department</Label>
-              <Select
-                value={formData.department_id}
-                onValueChange={(value) => setFormData({ ...formData, department_id: value })}
-              >
-                <SelectTrigger id="department_id">
-                  <SelectValue placeholder="Select department (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                  {departments.length === 0 && (
-                    <SelectItem value="none" disabled>
-                      No departments available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Branch */}
+          <div className="space-y-2">
+            <Label htmlFor="branch_id">Branch</Label>
+            <Select
+              value={formData.branch_id}
+              onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
+            >
+              <SelectTrigger id="branch_id">
+                <SelectValue placeholder="Select branch (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+                {branches.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    No branches available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Info Alert */}
